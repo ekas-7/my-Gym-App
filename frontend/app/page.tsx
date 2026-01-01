@@ -225,6 +225,8 @@ export default function Home() {
           return sum;
         }, 0);
         setExerciseMinutes(totalMinutes);
+        // Also update the fitness log
+        updateFitnessData({ exerciseMinutes: totalMinutes });
       }
     } catch (error) {
       console.error('Error fetching exercises:', error);
@@ -573,7 +575,7 @@ export default function Home() {
         }
       }
 
-      await fetch('/api/exercises', {
+      const response = await fetch('/api/exercises', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -588,8 +590,12 @@ export default function Home() {
         }),
       });
 
-      // Refresh exercises
-      fetchExercises();
+      const result = await response.json();
+      
+      if (result.success) {
+        // Refresh exercises from database (this will recalculate totals and update fitness log)
+        await fetchExercises();
+      }
     } catch (error) {
       console.error('Error saving quick-add exercise:', error);
     }
@@ -933,9 +939,10 @@ export default function Home() {
                                   duration={exercise.duration}
                                   isCompleted={completedExercises.has(exercise.id)}
                                   onToggle={async () => {
+                                    const wasCompleted = completedExercises.has(exercise.id);
                                     toggleExercise(exercise.id);
-                                    if (!completedExercises.has(exercise.id)) {
-                                      addExercise(exercise.duration);
+                                    if (!wasCompleted) {
+                                      // Save to database and refresh
                                       await saveQuickAddExercise(exercise.name, 'cardio', exercise.duration);
                                     }
                                   }}
@@ -979,10 +986,10 @@ export default function Home() {
                                         sets={exercise.sets}
                                         isCompleted={completedExercises.has(exercise.id)}
                                         onToggle={async () => {
+                                          const wasCompleted = completedExercises.has(exercise.id);
                                           toggleExercise(exercise.id);
-                                          if (!completedExercises.has(exercise.id)) {
-                                            // Assume 2 minutes per set
-                                            addExercise(exercise.sets * 2);
+                                          if (!wasCompleted) {
+                                            // Save to database and refresh
                                             await saveQuickAddExercise(
                                               exercise.name, 
                                               'weight-training', 
