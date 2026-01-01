@@ -13,6 +13,7 @@ import { CardioItem } from "@/components/cardio-item";
 import { BodyStats } from "@/components/body-stats";
 import StreakStats from "@/components/streak-stats";
 import StreakCalendar from "@/components/streak-calendar";
+import SidebarCalendar from "@/components/sidebar-calendar";
 import { MealHistory, MealTypeSelect } from "@/components/meal-history";
 import { cardioExercises, weightTrainingCategories } from "@/lib/exercises";
 import { calculateGoalsCompleted } from "@/lib/streak-utils";
@@ -874,11 +875,11 @@ export default function Home() {
                   <CardHeader>
                     <CardTitle>Activity Heatmap</CardTitle>
                     <CardDescription>
-                      Last 3 months of activity • Green = all goals • Yellow = partial • Gray = minimal
+                      Current month activity • Green = all goals • Yellow = partial • Gray = minimal
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <StreakCalendar logs={streakLogs} monthsToShow={3} />
+                    <StreakCalendar logs={streakLogs} monthsToShow={1} />
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -1047,18 +1048,11 @@ export default function Home() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {isMounted ? (
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    className="rounded-md"
-                  />
-                ) : (
-                  <div className="h-[280px] flex items-center justify-center">
-                    <div className="text-sm text-muted-foreground">Loading calendar...</div>
-                  </div>
-                )}
+                <SidebarCalendar
+                  logs={streakLogs}
+                  selectedDate={date}
+                  onSelectDate={setDate}
+                />
               </CardContent>
             </Card>
 

@@ -23,25 +23,40 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
     logMap.set(key, log);
   });
 
-  // Generate calendar data for the last N months
+  // Generate calendar data for the current month with proper week grid
   const generateCalendarDays = () => {
     const days: { date: Date; log: IFitnessLog | null }[] = [];
     const today = new Date();
-    const startDate = new Date();
-    startDate.setMonth(today.getMonth() - monthsToShow + 1);
-    startDate.setDate(1);
-    startDate.setHours(0, 0, 0, 0);
-
-    // Calculate days to show
-    const currentDate = new Date(startDate);
-    const endDate = new Date(today);
-    endDate.setHours(23, 59, 59, 999);
-
-    while (currentDate <= endDate) {
+    
+    // Get first and last day of current month
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    // Add empty days before the first of the month to align with week start (Sunday)
+    const startDayOfWeek = firstDayOfMonth.getDay(); // 0 = Sunday
+    for (let i = 0; i < startDayOfWeek; i++) {
+      const emptyDate = new Date(firstDayOfMonth);
+      emptyDate.setDate(firstDayOfMonth.getDate() - (startDayOfWeek - i));
+      days.push({ date: emptyDate, log: null });
+    }
+    
+    // Add all days of the current month
+    const currentDate = new Date(firstDayOfMonth);
+    while (currentDate <= lastDayOfMonth) {
       const dateKey = formatDateKey(currentDate);
       const log = logMap.get(dateKey) || null;
       days.push({ date: new Date(currentDate), log });
       currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Add empty days after the last of the month to complete the week
+    const endDayOfWeek = lastDayOfMonth.getDay(); // 0 = Sunday
+    if (endDayOfWeek < 6) {
+      for (let i = 1; i <= (6 - endDayOfWeek); i++) {
+        const emptyDate = new Date(lastDayOfMonth);
+        emptyDate.setDate(lastDayOfMonth.getDate() + i);
+        days.push({ date: emptyDate, log: null });
+      }
     }
 
     return days;
@@ -71,10 +86,13 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Get current month name
+  const currentMonthName = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Activity Calendar</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{currentMonthName}</h3>
         <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-emerald-600 dark:border-emerald-500"></div>
@@ -113,8 +131,8 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
             {week.map((day, dayIndex) => {
               const isToday = day.date.getTime() === today.getTime();
               const isFuture = day.date > today;
+              const isCurrentMonth = day.date.getMonth() === today.getMonth();
               const completion = day.log ? getCompletionPercentage(day.log) : 0;
-              const colors = getStreakColor(completion);
 
               return (
                 <div
@@ -124,75 +142,83 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
                 >
                   <div
                     className={`
-                      w-full h-full rounded-full
-                      ${isFuture 
-                        ? 'bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700' 
-                        : completion === 100 
-                          ? 'bg-emerald-500 dark:bg-emerald-400 border-2 border-emerald-600 dark:border-emerald-500'
-                          : completion >= 50
-                            ? 'bg-amber-400 dark:bg-amber-500 border-2 border-amber-500 dark:border-amber-600'
-                            : completion > 0
-                              ? 'bg-slate-400 dark:bg-slate-500 border-2 border-slate-500 dark:border-slate-600'
-                              : 'bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700'
-                      }
+                      w-full h-full rounded-md
+                      flex flex-col items-center justify-center
+                      transition-all duration-200
+                      ${isCurrentMonth ? '' : 'opacity-30'}
                       ${isToday ? 'ring-2 ring-blue-500 dark:ring-blue-400 ring-offset-2 dark:ring-offset-slate-950' : ''}
-                      flex items-center justify-center
-                      transition-all duration-200 hover:scale-110
-                      cursor-pointer
+                      ${isFuture 
+                        ? 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700' 
+                        : completion === 100 
+                          ? 'bg-emerald-100 dark:bg-emerald-900/30 border-2 border-emerald-500 dark:border-emerald-400'
+                          : completion >= 50
+                            ? 'bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-400 dark:border-amber-500'
+                            : completion > 0
+                              ? 'bg-slate-200 dark:bg-slate-700/30 border-2 border-slate-400 dark:border-slate-500'
+                              : 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700'
+                      }
+                      hover:scale-105 cursor-pointer
                     `}
                   >
                     <span
                       className={`
-                        text-[10px] font-bold
-                        ${isFuture 
-                          ? 'text-slate-300 dark:text-slate-600' 
+                        text-sm font-semibold
+                        ${isFuture || !isCurrentMonth
+                          ? 'text-slate-400 dark:text-slate-600' 
                           : completion === 100
-                            ? 'text-white dark:text-emerald-950'
+                            ? 'text-emerald-700 dark:text-emerald-300'
                             : completion >= 50
-                              ? 'text-amber-900 dark:text-amber-950'
+                              ? 'text-amber-700 dark:text-amber-300'
                               : completion > 0
-                                ? 'text-white dark:text-slate-950'
-                                : 'text-slate-400 dark:text-slate-600'
+                                ? 'text-slate-700 dark:text-slate-300'
+                                : 'text-slate-500 dark:text-slate-500'
                         }
                       `}
                     >
-                      {!isFuture && completion > 0 ? `${completion}%` : ''}
+                      {day.date.getDate()}
                     </span>
-                  </div>
-
-                  {/* Date number - shown on hover */}
-                  <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 dark:bg-slate-100 text-white dark:text-gray-900 text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none z-10">
-                    {day.date.toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                    {day.log && (
-                      <div className="text-[10px] mt-1">
-                        {day.log.goalsCompleted}/{day.log.totalGoals} goals
-                      </div>
+                    
+                    {/* Streak indicator dot */}
+                    {isCurrentMonth && !isFuture && completion > 0 && (
+                      <div
+                        className={`
+                          w-1.5 h-1.5 rounded-full mt-0.5
+                          ${completion === 100 
+                            ? 'bg-emerald-500 dark:bg-emerald-400'
+                            : completion >= 50
+                              ? 'bg-amber-400 dark:bg-amber-500'
+                              : 'bg-slate-400 dark:bg-slate-500'
+                          }
+                        `}
+                      />
                     )}
                   </div>
+
+                  {/* Hover tooltip */}
+                  {isCurrentMonth && (
+                    <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 dark:bg-slate-100 text-white dark:text-gray-900 text-xs px-3 py-2 rounded whitespace-nowrap pointer-events-none z-10 shadow-lg">
+                      <div className="font-semibold">
+                        {day.date.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </div>
+                      {day.log ? (
+                        <div className="text-[10px] mt-1">
+                          {day.log.goalsCompleted}/{day.log.totalGoals} goals • {completion}%
+                        </div>
+                      ) : (
+                        <div className="text-[10px] mt-1">
+                          No activity
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         ))}
-      </div>
-
-      {/* Month markers */}
-      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-4 px-1">
-        {Array.from({ length: monthsToShow }).map((_, i) => {
-          const monthDate = new Date();
-          monthDate.setMonth(today.getMonth() - monthsToShow + 1 + i);
-          return (
-            <div key={i}>
-              {monthDate.toLocaleDateString('en-US', {
-                month: 'short',
-                year: 'numeric',
-              })}
-            </div>
-          );
-        })}
       </div>
     </div>
   );
