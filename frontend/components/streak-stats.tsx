@@ -89,7 +89,7 @@ export default function StreakStats({ logs }: StreakStatsProps) {
       </Card>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Longest Streak */}
         <Card className="p-4 text-center hover:shadow-lg transition-shadow dark:hover:shadow-orange-500/10">
           <div className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 uppercase">Trophy</div>

@@ -80,7 +80,7 @@ export function MealHistory({ meals, onDelete }: MealHistoryProps) {
                   <p className="text-sm font-medium mb-2">{meal.description}</p>
 
                   {/* Macros Grid */}
-                  <div className="grid grid-cols-4 gap-2 text-xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                     <div className="bg-red-50 p-2 rounded">
                       <div className="text-muted-foreground">Calories</div>
                       <div className="font-bold text-red-700">{meal.calories}</div>

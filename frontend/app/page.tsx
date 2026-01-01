@@ -725,13 +725,13 @@ export default function Home() {
           {/* Main Content - Tabs */}
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
-                <TabsTrigger value="hydration">Hydration</TabsTrigger>
-                <TabsTrigger value="diet">Diet</TabsTrigger>
-                <TabsTrigger value="exercise">Exercise</TabsTrigger>
-                <TabsTrigger value="weight">Weight</TabsTrigger>
-                <TabsTrigger value="streak">Streak</TabsTrigger>
-                <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto gap-1">
+                <TabsTrigger value="hydration" className="text-xs sm:text-sm px-2 py-2">Hydration</TabsTrigger>
+                <TabsTrigger value="diet" className="text-xs sm:text-sm px-2 py-2">Diet</TabsTrigger>
+                <TabsTrigger value="exercise" className="text-xs sm:text-sm px-2 py-2">Exercise</TabsTrigger>
+                <TabsTrigger value="weight" className="text-xs sm:text-sm px-2 py-2">Weight</TabsTrigger>
+                <TabsTrigger value="streak" className="text-xs sm:text-sm px-2 py-2">Streak</TabsTrigger>
+                <TabsTrigger value="summary" className="text-xs sm:text-sm px-2 py-2">Summary</TabsTrigger>
               </TabsList>
 
               {/* Hydration Tab */}
@@ -786,7 +786,7 @@ export default function Home() {
                             Reset
                           </Button>
                         </div>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-4 sm:grid-cols-4 gap-2">
                           {Array.from({ length: 16 }).map((_, i) => {
                             const threshold = (i + 1) * 0.25; // Each box represents 250ml
                             return (
@@ -1068,7 +1068,7 @@ export default function Home() {
                         {exerciseCategory === 'weight-training' && (
                           <div className="space-y-3">
                             {/* Muscle Group Selector */}
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                               {weightTrainingCategories.map((category) => (
                                 <Button
                                   key={category.id}
@@ -1158,7 +1158,7 @@ export default function Home() {
                         <CardDescription>Log your weight and body fat for today</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Weight (kg)</label>
                             <div className="flex gap-2">
@@ -1365,7 +1365,7 @@ export default function Home() {
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Consumed</span>
                               <span className="font-medium">
-                                {getSummaryData(summaryPeriod).water.consumed.toFixed(2)} / {(getSummaryData(summaryPeriod).water.goal * (summaryPeriod === 'day' ? 1 : getSummaryData(summaryPeriod).totalDays)).toFixed(2)} L
+                                {getSummaryData(summaryPeriod).water.consumed.toFixed(2)} / {(getSummaryData(summaryPeriod).water.goal * getSummaryData(summaryPeriod).totalDays).toFixed(2)} L
                               </span>
                             </div>
                             <Progress value={getSummaryData(summaryPeriod).water.percentage} className="h-2" />
@@ -1387,7 +1387,7 @@ export default function Home() {
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Consumed</span>
                               <span className="font-medium">
-                                {getSummaryData(summaryPeriod).calories.consumed.toLocaleString()} / {Math.round(getSummaryData(summaryPeriod).calories.goal * (summaryPeriod === 'day' ? 1 : getSummaryData(summaryPeriod).totalDays)).toLocaleString()} kcal
+                                {getSummaryData(summaryPeriod).calories.consumed.toLocaleString()} / {Math.round(getSummaryData(summaryPeriod).calories.goal * getSummaryData(summaryPeriod).totalDays).toLocaleString()} kcal
                               </span>
                             </div>
                             <Progress value={getSummaryData(summaryPeriod).calories.percentage} className="h-2" />
@@ -1409,7 +1409,7 @@ export default function Home() {
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Completed</span>
                               <span className="font-medium">
-                                {getSummaryData(summaryPeriod).exercise.minutes.toLocaleString()} / {Math.round(getSummaryData(summaryPeriod).exercise.goal * (summaryPeriod === 'day' ? 1 : getSummaryData(summaryPeriod).totalDays)).toLocaleString()} min
+                                {getSummaryData(summaryPeriod).exercise.minutes.toLocaleString()} / {Math.round(getSummaryData(summaryPeriod).exercise.goal * getSummaryData(summaryPeriod).totalDays).toLocaleString()} min
                               </span>
                             </div>
                             <Progress value={getSummaryData(summaryPeriod).exercise.percentage} className="h-2" />
@@ -1433,21 +1433,21 @@ export default function Home() {
                         </div>
 
                         {/* Quick Stats Grid */}
-                        <div className="grid grid-cols-3 gap-4 pt-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                           <div className="text-center space-y-1 p-3 bg-blue-500/10 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-500">
+                            <div className="text-xl sm:text-2xl font-bold text-blue-500">
                               {getSummaryData(summaryPeriod).water.consumed.toFixed(1)}
                             </div>
                             <div className="text-xs text-muted-foreground">Liters</div>
                           </div>
                           <div className="text-center space-y-1 p-3 bg-green-500/10 rounded-lg">
-                            <div className="text-2xl font-bold text-green-500">
+                            <div className="text-xl sm:text-2xl font-bold text-green-500">
                               {(getSummaryData(summaryPeriod).calories.consumed / 1000).toFixed(1)}k
                             </div>
                             <div className="text-xs text-muted-foreground">Calories</div>
                           </div>
                           <div className="text-center space-y-1 p-3 bg-purple-500/10 rounded-lg">
-                            <div className="text-2xl font-bold text-purple-500">
+                            <div className="text-xl sm:text-2xl font-bold text-purple-500">
                               {getSummaryData(summaryPeriod).exercise.minutes}
                             </div>
                             <div className="text-xs text-muted-foreground">Minutes</div>
