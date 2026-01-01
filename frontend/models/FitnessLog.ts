@@ -16,12 +16,23 @@ export interface IFitnessLog {
   waterGoal: number;
   calories: number;
   calorieGoal: number;
+  // Macronutrients
+  carbs: number; // Carbohydrates in grams
+  carbsGoal: number; // Target carbs
+  fats: number; // Fats in grams
+  fatsGoal: number; // Target fats
+  protein: number; // Protein in grams
+  proteinGoal: number; // Target protein (from user profile)
   exerciseMinutes: number;
   exerciseGoal: number;
   exercises: IExerciseLog[];
   // Weight tracking
   weight?: number; // Current weight in kg
   bodyFatPercentage?: number; // Body fat %
+  // Streak tracking
+  goalsCompleted: number; // How many goals were met (0-4)
+  totalGoals: number; // Total trackable goals (always 4: water, calories, exercise, weight)
+  isStreakDay: boolean; // True if all goals were met
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -83,6 +94,39 @@ const FitnessLogSchema = new Schema<IFitnessLog>(
       required: true,
       default: 2000,
     },
+    carbs: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    carbsGoal: {
+      type: Number,
+      required: true,
+      default: 250, // grams per day
+    },
+    fats: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    fatsGoal: {
+      type: Number,
+      required: true,
+      default: 65, // grams per day
+    },
+    protein: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    proteinGoal: {
+      type: Number,
+      required: true,
+      default: 190, // grams per day
+    },
     exerciseMinutes: {
       type: Number,
       required: true,
@@ -106,6 +150,23 @@ const FitnessLogSchema = new Schema<IFitnessLog>(
       type: Number,
       min: 0,
       max: 100,
+    },
+    goalsCompleted: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+      max: 4,
+    },
+    totalGoals: {
+      type: Number,
+      required: true,
+      default: 4, // water, calories, exercise, weight
+    },
+    isStreakDay: {
+      type: Boolean,
+      required: true,
+      default: false,
     },
   },
   {

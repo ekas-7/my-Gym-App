@@ -11,7 +11,11 @@ import { Droplet, Utensils, Dumbbell, TrendingUp, Target, Calendar as CalendarIc
 import { ExerciseItem } from "@/components/exercise-item";
 import { CardioItem } from "@/components/cardio-item";
 import { BodyStats } from "@/components/body-stats";
+import StreakStats from "@/components/streak-stats";
+import StreakCalendar from "@/components/streak-calendar";
 import { cardioExercises, weightTrainingCategories } from "@/lib/exercises";
+import { calculateGoalsCompleted } from "@/lib/streak-utils";
+import { IFitnessLog } from "@/models/FitnessLog";
 
 interface SummaryData {
   period: string;
@@ -54,6 +58,15 @@ export default function Home() {
   // Diet state
   const [calories, setCalories] = useState(0);
   const [calorieGoal, setCalorieGoal] = useState(2000); // Will be updated from profile
+  const [carbs, setCarbs] = useState(0);
+  const [carbsGoal, setCarbsGoal] = useState(250);
+  const [fats, setFats] = useState(0);
+  const [fatsGoal, setFatsGoal] = useState(65);
+  const [protein, setProtein] = useState(0);
+  const [proteinGoal, setProteinGoal] = useState(190);
+  const [foodDescription, setFoodDescription] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
 
   // Exercise state
   const [exerciseMinutes, setExerciseMinutes] = useState(0);
@@ -80,10 +93,14 @@ export default function Home() {
   const [exerciseCategory, setExerciseCategory] = useState<'cardio' | 'weight-training'>('cardio');
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<'chest' | 'back' | 'shoulders'>('chest');
 
+  // Streak tracking state
+  const [streakLogs, setStreakLogs] = useState<IFitnessLog[]>([]);
+
   // Fetch today's fitness data on mount
   useEffect(() => {
     fetchTodayData();
     fetchUserProfile();
+    fetchStreakData();
   }, []);
 
   // Fetch summary data when period changes
@@ -115,6 +132,9 @@ export default function Home() {
       if (result.success) {
         setWaterIntake(result.data.waterLiters);
         setCalories(result.data.calories);
+        setCarbs(result.data.carbs || 0);
+        setFats(result.data.fats || 0);
+        setProtein(result.data.protein || 0);
         setExerciseMinutes(result.data.exerciseMinutes);
         setTodayWeight(result.data.weight || null);
         setTodayBodyFat(result.data.bodyFatPercentage || null);
@@ -139,15 +159,77 @@ export default function Home() {
     }
   };
 
-  const updateFitnessData = async (data: { waterLiters?: number; calories?: number; exerciseMinutes?: number; weight?: number; bodyFatPercentage?: number }) => {
+  const fetchStreakData = async () => {
     try {
+      const response = await fetch('/api/fitness/streak?days=90');
+      const result = await response.json();
+      
+      if (result.success) {
+        setStreakLogs(result.data.logs);
+      }
+    } catch (error) {
+      console.error('Error fetching streak data:', error);
+    }
+  };
+
+  const updateFitnessData = async (data: { 
+    waterLiters?: number; 
+    calories?: number; 
+    carbs?: number;
+    fats?: number;
+    protein?: number;
+    exerciseMinutes?: number; 
+    weight?: number; 
+    bodyFatPercentage?: number;
+  }) => {
+    try {
+      // First update the data
       await fetch('/api/fitness', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      // Refresh summary after update
+      
+      // Calculate and update streak status
+      const currentData: IFitnessLog = {
+        waterLiters: data.waterLiters ?? waterIntake,
+        waterGoal: dailyWaterGoal,
+        calories: data.calories ?? calories,
+        calorieGoal: calorieGoal,
+        carbs: data.carbs ?? carbs,
+        carbsGoal: carbsGoal,
+        fats: data.fats ?? fats,
+        fatsGoal: fatsGoal,
+        protein: data.protein ?? protein,
+        proteinGoal: proteinGoal,
+        exerciseMinutes: data.exerciseMinutes ?? exerciseMinutes,
+        exerciseGoal: exerciseGoal,
+        weight: data.weight ?? (todayWeight || undefined),
+        bodyFatPercentage: data.bodyFatPercentage ?? (todayBodyFat || undefined),
+        exercises: [],
+        date: new Date(),
+        goalsCompleted: 0,
+        totalGoals: 4,
+        isStreakDay: false,
+      };
+      
+      const streakData = calculateGoalsCompleted(currentData);
+      
+      // Update with streak data
+      await fetch('/api/fitness', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...data,
+          goalsCompleted: streakData.goalsCompleted,
+          totalGoals: streakData.totalGoals,
+          isStreakDay: streakData.isStreakDay,
+        }),
+      });
+      
+      // Refresh all data
       fetchSummaryData();
+      fetchStreakData();
       
       // Update profile if weight changed
       if (data.weight && userProfile) {
@@ -169,10 +251,52 @@ export default function Home() {
     updateFitnessData({ waterLiters: newValue });
   };
   
-  const addCalories = (amount: number) => {
-    const newValue = Math.min(calories + amount, calorieGoal);
-    setCalories(newValue);
-    updateFitnessData({ calories: newValue });
+  const analyzeFood = async () => {
+    if (!foodDescription.trim()) {
+      setAnalysisError('Please enter a food description');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError('');
+
+    try {
+      const response = await fetch('/api/diet/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ foodDescription }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const newCalories = calories + result.data.calories;
+        const newCarbs = carbs + result.data.carbs;
+        const newFats = fats + result.data.fats;
+        const newProtein = protein + result.data.protein;
+
+        setCalories(newCalories);
+        setCarbs(newCarbs);
+        setFats(newFats);
+        setProtein(newProtein);
+
+        updateFitnessData({ 
+          calories: newCalories,
+          carbs: newCarbs,
+          fats: newFats,
+          protein: newProtein,
+        });
+
+        setFoodDescription('');
+      } else {
+        setAnalysisError(result.error || 'Failed to analyze food');
+      }
+    } catch (error) {
+      console.error('Error analyzing food:', error);
+      setAnalysisError('Network error. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
   
   const addExercise = (minutes: number) => {
@@ -240,11 +364,12 @@ export default function Home() {
           {/* Main Content - Tabs */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="hydration" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="hydration">Hydration</TabsTrigger>
                 <TabsTrigger value="diet">Diet</TabsTrigger>
                 <TabsTrigger value="exercise">Exercise</TabsTrigger>
                 <TabsTrigger value="weight">Weight</TabsTrigger>
+                <TabsTrigger value="streak">Streak</TabsTrigger>
                 <TabsTrigger value="summary">Summary</TabsTrigger>
               </TabsList>
 
@@ -314,62 +439,103 @@ export default function Home() {
                       <div>
                         <CardTitle className="flex items-center gap-2">
                           <Utensils className="h-5 w-5 text-green-500" />
-                          Calorie Intake
+                          Nutrition Tracking
                         </CardTitle>
-                        <CardDescription>Monitor your daily calorie consumption</CardDescription>
+                        <CardDescription>AI-powered food analysis with macros</CardDescription>
                       </div>
-                      <Badge variant={calories >= calorieGoal ? "default" : "secondary"}>
-                        {calories} / {calorieGoal} kcal
-                      </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">{Math.round((calories / calorieGoal) * 100)}%</span>
+                  <CardContent className="space-y-6">
+                    {/* AI Food Input */}
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium">Describe your meal</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={foodDescription}
+                          onChange={(e) => setFoodDescription(e.target.value)}
+                          placeholder="e.g., 2 eggs, whole wheat toast, banana, coffee"
+                          className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          onKeyPress={(e) => e.key === 'Enter' && analyzeFood()}
+                          disabled={isAnalyzing}
+                        />
+                        <Button 
+                          onClick={analyzeFood} 
+                          disabled={isAnalyzing || !foodDescription.trim()}
+                        >
+                          {isAnalyzing ? 'Analyzing...' : 'Add Food'}
+                        </Button>
                       </div>
-                      <Progress value={(calories / calorieGoal) * 100} className="h-3" />
+                      {analysisError && (
+                        <div className="text-sm text-red-600">{analysisError}</div>
+                      )}
+                      <div className="text-xs text-muted-foreground">
+                        Powered by Gemini AI - Enter any food description for automatic macro calculation
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button 
-                        onClick={() => addCalories(200)} 
-                        variant="outline" 
-                        className="h-auto py-4 flex flex-col items-start"
-                      >
-                        <span className="font-semibold">Salad</span>
-                        <span className="text-xs text-muted-foreground">+200 kcal</span>
-                      </Button>
-                      <Button 
-                        onClick={() => addCalories(400)} 
-                        variant="outline" 
-                        className="h-auto py-4 flex flex-col items-start"
-                      >
-                        <span className="font-semibold">Chicken</span>
-                        <span className="text-xs text-muted-foreground">+400 kcal</span>
-                      </Button>
-                      <Button 
-                        onClick={() => addCalories(300)} 
-                        variant="outline" 
-                        className="h-auto py-4 flex flex-col items-start"
-                      >
-                        <span className="font-semibold">Rice</span>
-                        <span className="text-xs text-muted-foreground">+300 kcal</span>
-                      </Button>
-                      <Button 
-                        onClick={() => addCalories(150)} 
-                        variant="outline" 
-                        className="h-auto py-4 flex flex-col items-start"
-                      >
-                        <span className="font-semibold">Smoothie</span>
-                        <span className="text-xs text-muted-foreground">+150 kcal</span>
-                      </Button>
+
+                    {/* Macros Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <Card className="p-4">
+                        <div className="text-xs text-muted-foreground mb-1">Calories</div>
+                        <div className="text-2xl font-bold">{calories}</div>
+                        <div className="text-xs text-muted-foreground">/ {calorieGoal} kcal</div>
+                        <Progress value={(calories / calorieGoal) * 100} className="h-1 mt-2" />
+                      </Card>
+
+                      <Card className="p-4">
+                        <div className="text-xs text-muted-foreground mb-1">Carbs</div>
+                        <div className="text-2xl font-bold">{carbs.toFixed(1)}</div>
+                        <div className="text-xs text-muted-foreground">/ {carbsGoal}g</div>
+                        <Progress value={(carbs / carbsGoal) * 100} className="h-1 mt-2" />
+                      </Card>
+
+                      <Card className="p-4">
+                        <div className="text-xs text-muted-foreground mb-1">Fats</div>
+                        <div className="text-2xl font-bold">{fats.toFixed(1)}</div>
+                        <div className="text-xs text-muted-foreground">/ {fatsGoal}g</div>
+                        <Progress value={(fats / fatsGoal) * 100} className="h-1 mt-2" />
+                      </Card>
+
+                      <Card className="p-4">
+                        <div className="text-xs text-muted-foreground mb-1">Protein</div>
+                        <div className="text-2xl font-bold">{protein.toFixed(1)}</div>
+                        <div className="text-xs text-muted-foreground">/ {proteinGoal}g</div>
+                        <Progress value={(protein / proteinGoal) * 100} className="h-1 mt-2" />
+                      </Card>
                     </div>
-                    <Button variant="outline" onClick={() => {
-                      setCalories(0);
-                      updateFitnessData({ calories: 0 });
-                    }} className="w-full">
-                      Reset Calories
+
+                    {/* Macro Distribution */}
+                    <Card className="p-4 bg-gray-50">
+                      <div className="text-sm font-medium mb-3">Macro Distribution</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Carbs</span>
+                          <span className="font-medium">{((carbs / carbsGoal) * 100).toFixed(0)}%</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Fats</span>
+                          <span className="font-medium">{((fats / fatsGoal) * 100).toFixed(0)}%</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Protein</span>
+                          <span className="font-medium">{((protein / proteinGoal) * 100).toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    </Card>
+
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setCalories(0);
+                        setCarbs(0);
+                        setFats(0);
+                        setProtein(0);
+                        updateFitnessData({ calories: 0, carbs: 0, fats: 0, protein: 0 });
+                      }} 
+                      className="w-full"
+                    >
+                      Reset All Nutrition
                     </Button>
                   </CardContent>
                 </Card>
@@ -606,6 +772,36 @@ export default function Home() {
                     </CardContent>
                   </Card>
                 )}
+              </TabsContent>
+
+              {/* Streak Tab */}
+              <TabsContent value="streak" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-orange-500" />
+                      Your Streak
+                    </CardTitle>
+                    <CardDescription>
+                      Complete all 4 daily goals to maintain your streak
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <StreakStats logs={streakLogs} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Activity Heatmap</CardTitle>
+                    <CardDescription>
+                      Last 3 months of activity • Green = all goals • Yellow = partial • Gray = minimal
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <StreakCalendar logs={streakLogs} monthsToShow={3} />
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Summary Tab */}
