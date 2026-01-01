@@ -27,8 +27,12 @@ export function BodyStats({
   goalType,
 }: BodyStatsProps) {
   const weightToLose = currentWeight - targetWeight;
-  const weightProgress = weightToLose > 0 
-    ? ((currentWeight - targetWeight) / (currentWeight - targetWeight)) * 100 
+  
+  // Calculate progress percentage (how close we are to goal)
+  // If we need to lose weight, calculate progress towards target
+  const totalWeightToLose = Math.abs(weightToLose);
+  const progressPercentage = totalWeightToLose > 0 
+    ? Math.min(100, Math.max(0, ((totalWeightToLose - Math.abs(weightToLose)) / totalWeightToLose) * 100))
     : 100;
   
   const leanMass = currentWeight * (1 - bodyFatPercentage / 100);
@@ -59,10 +63,10 @@ export function BodyStats({
                 <div className="text-xs text-muted-foreground">Target: {targetWeight} kg</div>
               </div>
             </div>
-            <Progress value={Math.max(0, 100 - weightProgress)} className="h-2" />
+            <Progress value={progressPercentage} className="h-2" />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{weightToLose > 0 ? `${weightToLose.toFixed(1)} kg to lose` : 'Goal reached!'}</span>
-              <span>{Math.round(Math.max(0, 100 - weightProgress))}% to goal</span>
+              <span>{weightToLose > 0 ? `${weightToLose.toFixed(1)} kg to lose` : weightToLose < 0 ? `${Math.abs(weightToLose).toFixed(1)} kg to gain` : 'Goal reached!'}</span>
+              <span>{Math.round(progressPercentage)}% to goal</span>
             </div>
           </div>
 
