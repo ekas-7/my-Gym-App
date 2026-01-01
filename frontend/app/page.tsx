@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { Droplet, Utensils, Dumbbell, TrendingUp, Target, Calendar as CalendarIcon, Heart, Scale, Sparkles } from "lucide-react";
+import { Droplet, Utensils, Dumbbell, TrendingUp, Target, Calendar as CalendarIcon, Heart, Scale, Sparkles, Download, FileText, Loader2, Brain, Award, AlertCircle, CheckCircle2 } from "lucide-react";
 import { ExerciseItem } from "@/components/exercise-item";
 import { CustomizableExerciseItem } from "@/components/customizable-exercise-item";
 import { CardioItem } from "@/components/cardio-item";
@@ -31,6 +31,17 @@ interface SummaryData {
   calories: { consumed: number; goal: number; percentage: number };
   exercise: { minutes: number; goal: number; percentage: number };
   totalDays: number;
+}
+
+interface AIAnalysis {
+  overallScore: number;
+  highlights: string[];
+  areasToImprove: string[];
+  hydrationInsight: string;
+  nutritionInsight: string;
+  exerciseInsight: string;
+  weeklyTip: string;
+  motivationalMessage: string;
 }
 
 interface UserProfile {
@@ -98,6 +109,11 @@ export default function Home() {
   
   // Summary data from MongoDB
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
+  
+  // AI Analysis state
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
+  const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
@@ -546,6 +562,68 @@ export default function Home() {
       },
       totalDays: 1,
     };
+  };
+
+  // Fetch AI analysis for summary
+  const fetchAIAnalysis = async () => {
+    setIsAnalyzingAI(true);
+    setAiAnalysis(null);
+    try {
+      const response = await fetch(`/api/fitness/summary/analyze?period=${summaryPeriod}`);
+      const result = await response.json();
+      if (result.success) {
+        setAiAnalysis(result.data.analysis);
+      }
+    } catch (error) {
+      console.error('Error fetching AI analysis:', error);
+    } finally {
+      setIsAnalyzingAI(false);
+    }
+  };
+
+  // Export data as CSV
+  const exportCSV = async () => {
+    setIsExporting(true);
+    try {
+      const response = await fetch(`/api/fitness/summary/export?period=${summaryPeriod}&format=csv`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fitness-report-${summaryPeriod}-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Export data as JSON
+  const exportJSON = async () => {
+    setIsExporting(true);
+    try {
+      const response = await fetch(`/api/fitness/summary/export?period=${summaryPeriod}&format=json`);
+      const result = await response.json();
+      if (result.success) {
+        const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `fitness-report-${summaryPeriod}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error('Error exporting JSON:', error);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const toggleExercise = (exerciseId: string) => {
@@ -1342,6 +1420,178 @@ export default function Home() {
                         <div className="text-xs text-muted-foreground">Minutes</div>
                       </div>
                     </div>
+
+                    {/* Export Buttons */}
+                    <div className="pt-4 border-t">
+                      <h3 className="font-semibold mb-3 flex items-center gap-2">
+                        <Download className="h-4 w-4" />
+                        Export Report
+                      </h3>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button 
+                          variant="outline" 
+                          onClick={exportCSV}
+                          disabled={isExporting}
+                        >
+                          {isExporting ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <FileText className="h-4 w-4 mr-2" />
+                          )}
+                          Export CSV
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={exportJSON}
+                          disabled={isExporting}
+                        >
+                          {isExporting ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Download className="h-4 w-4 mr-2" />
+                          )}
+                          Export JSON
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Download your {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} fitness data including meals and exercises
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* AI Analysis Card */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <CardTitle className="flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-pink-500" />
+                        AI Fitness Analysis
+                      </CardTitle>
+                      <Button 
+                        size="sm" 
+                        onClick={fetchAIAnalysis}
+                        disabled={isAnalyzingAI}
+                      >
+                        {isAnalyzingAI ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Analyzing...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Get Analysis
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <CardDescription>
+                      Get personalized insights and recommendations powered by AI
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isAnalyzingAI ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center space-y-3">
+                          <Loader2 className="h-8 w-8 animate-spin mx-auto text-pink-500" />
+                          <p className="text-sm text-muted-foreground">Analyzing your fitness data...</p>
+                        </div>
+                      </div>
+                    ) : aiAnalysis ? (
+                      <div className="space-y-6">
+                        {/* Overall Score */}
+                        <div className="text-center p-4 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-lg">
+                          <div className="text-5xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+                            {aiAnalysis.overallScore}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">Overall Score</p>
+                        </div>
+
+                        {/* Highlights */}
+                        {aiAnalysis.highlights && aiAnalysis.highlights.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="font-semibold flex items-center gap-2 text-green-600">
+                              <Award className="h-4 w-4" />
+                              Highlights
+                            </h4>
+                            <ul className="space-y-2">
+                              {aiAnalysis.highlights.map((highlight, index) => (
+                                <li key={index} className="flex items-start gap-2 text-sm">
+                                  <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                                  <span>{highlight}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Areas to Improve */}
+                        {aiAnalysis.areasToImprove && aiAnalysis.areasToImprove.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="font-semibold flex items-center gap-2 text-amber-600">
+                              <AlertCircle className="h-4 w-4" />
+                              Areas to Improve
+                            </h4>
+                            <ul className="space-y-2">
+                              {aiAnalysis.areasToImprove.map((area, index) => (
+                                <li key={index} className="flex items-start gap-2 text-sm">
+                                  <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                                  <span>{area}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Insights Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="p-3 bg-blue-500/10 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Droplet className="h-4 w-4 text-blue-500" />
+                              <span className="font-semibold text-sm">Hydration</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{aiAnalysis.hydrationInsight}</p>
+                          </div>
+                          <div className="p-3 bg-green-500/10 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Utensils className="h-4 w-4 text-green-500" />
+                              <span className="font-semibold text-sm">Nutrition</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{aiAnalysis.nutritionInsight}</p>
+                          </div>
+                          <div className="p-3 bg-purple-500/10 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Dumbbell className="h-4 w-4 text-purple-500" />
+                              <span className="font-semibold text-sm">Exercise</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{aiAnalysis.exerciseInsight}</p>
+                          </div>
+                        </div>
+
+                        {/* Weekly Tip */}
+                        <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Target className="h-4 w-4 text-orange-500" />
+                            <span className="font-semibold text-sm">Tip for the Week</span>
+                          </div>
+                          <p className="text-sm">{aiAnalysis.weeklyTip}</p>
+                        </div>
+
+                        {/* Motivational Message */}
+                        <div className="p-4 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-lg border border-pink-500/20 text-center">
+                          <Sparkles className="h-5 w-5 text-pink-500 mx-auto mb-2" />
+                          <p className="text-sm italic">&ldquo;{aiAnalysis.motivationalMessage}&rdquo;</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Brain className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                        <p className="text-muted-foreground">
+                          Click &ldquo;Get Analysis&rdquo; to receive personalized insights about your {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} fitness performance.
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
