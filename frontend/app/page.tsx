@@ -20,7 +20,6 @@ import { MealHistory, MealTypeSelect } from "@/components/meal-history";
 import { ExerciseHistory } from "@/components/exercise-history";
 import { WeightGraph } from "@/components/weight-graph";
 import { cardioExercises, weightTrainingCategories } from "@/lib/exercises";
-import { calculateGoalsCompleted } from "@/lib/streak-utils";
 import { IFitnessLog } from "@/models/FitnessLog";
 import { IMeal } from "@/models/Meal";
 import { IExercise } from "@/models/Exercise";
@@ -312,48 +311,11 @@ export default function Home() {
     bodyFatPercentage?: number;
   }) => {
     try {
-      // First update the data
+      // Update the data - backend will calculate streak status automatically
       await fetch('/api/fitness', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      });
-      
-      // Calculate and update streak status
-      const currentData: IFitnessLog = {
-        waterLiters: data.waterLiters ?? waterIntake,
-        waterGoal: dailyWaterGoal,
-        calories: data.calories ?? calories,
-        calorieGoal: calorieGoal,
-        carbs: data.carbs ?? carbs,
-        carbsGoal: carbsGoal,
-        fats: data.fats ?? fats,
-        fatsGoal: fatsGoal,
-        protein: data.protein ?? protein,
-        proteinGoal: proteinGoal,
-        exerciseMinutes: data.exerciseMinutes ?? exerciseMinutes,
-        exerciseGoal: exerciseGoal,
-        weight: data.weight ?? (todayWeight || undefined),
-        bodyFatPercentage: data.bodyFatPercentage ?? (todayBodyFat || undefined),
-        exercises: [],
-        date: new Date(),
-        goalsCompleted: 0,
-        totalGoals: 3,
-        isStreakDay: false,
-      };
-      
-      const streakData = calculateGoalsCompleted(currentData);
-      
-      // Update with streak data
-      await fetch('/api/fitness', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          goalsCompleted: streakData.goalsCompleted,
-          totalGoals: streakData.totalGoals,
-          isStreakDay: streakData.isStreakDay,
-        }),
       });
       
       // Refresh all data
@@ -362,7 +324,7 @@ export default function Home() {
       
       // Update profile if weight or body fat changed
       if (userProfile && (data.weight !== undefined || data.bodyFatPercentage !== undefined)) {
-        const profileUpdate: any = {};
+        const profileUpdate: Record<string, number> = {};
         if (data.weight !== undefined) {
           profileUpdate.currentWeight = data.weight;
         }
@@ -383,7 +345,7 @@ export default function Home() {
   };
 
   const addWater = () => {
-    const newValue = Math.min(waterIntake + 0.25, dailyWaterGoal); // Add 250ml (0.25L)
+    const newValue = waterIntake + 0.25; // Add 250ml (0.25L) - don't cap at goal
     setWaterIntake(newValue);
     updateFitnessData({ waterLiters: newValue });
   };
