@@ -297,6 +297,12 @@ export default function Home() {
     setWaterIntake(newValue);
     updateFitnessData({ waterLiters: newValue });
   };
+
+  const removeWater = () => {
+    const newValue = Math.max(waterIntake - 0.25, 0); // Remove 250ml (0.25L)
+    setWaterIntake(newValue);
+    updateFitnessData({ waterLiters: newValue });
+  };
   
   const analyzeFood = async () => {
     if (!foodDescription.trim()) {
@@ -487,6 +493,13 @@ export default function Home() {
                           <Button onClick={addWater} disabled={waterIntake >= dailyWaterGoal}>
                             <Droplet className="h-4 w-4 mr-2" />
                             Add 250ml
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={removeWater} 
+                            disabled={waterIntake === 0}
+                          >
+                            Remove 250ml
                           </Button>
                           <Button variant="outline" onClick={() => {
                             setWaterIntake(0);
