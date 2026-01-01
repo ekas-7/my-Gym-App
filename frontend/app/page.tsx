@@ -833,7 +833,7 @@ export default function Home() {
                 </Card>
               </TabsContent>
 
-                            {/* Exercise Tab */}
+              {/* Exercise Tab */}
               <TabsContent value="exercise" className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -896,10 +896,7 @@ export default function Home() {
                           </div>
                         </div>
 
-                        {/* Exercise History */}
-                        <div className="border-b pb-4">
-                          <ExerciseHistory exercises={exercises} onDelete={handleDeleteExercise} />
-                        </div>
+                        
 
                         {/* Category Selector */}
                         <div className="space-y-3">
@@ -1019,6 +1016,10 @@ export default function Home() {
                     )}
                   </CardContent>
                 </Card>
+                {/* Exercise History */}
+                    <div className="border-b pb-4">
+                        <ExerciseHistory exercises={exercises} onDelete={handleDeleteExercise} />
+                   </div>
               </TabsContent>
 
               {/* Weight Tracking Tab */}
@@ -1028,17 +1029,7 @@ export default function Home() {
                     {/* Weight Graph - At the Top */}
                     <WeightGraph days={30} targetWeight={userProfile.targetWeight} />
                     
-                    <BodyStats
-                      currentWeight={todayWeight || userProfile.currentWeight}
-                      targetWeight={userProfile.targetWeight}
-                      bodyFatPercentage={todayBodyFat || userProfile.bodyFatPercentage}
-                      skeletalMuscle={userProfile.skeletalMuscle}
-                      visceralFatIndex={userProfile.visceralFatIndex}
-                      bmr={userProfile.bmr}
-                      dailyCalorieTarget={userProfile.dailyCalorieTarget}
-                      dailyProteinTarget={userProfile.dailyProteinTarget}
-                      goalType={userProfile.goalType}
-                    />
+                    
                     
                     {/* Daily Weight Log */}
                     <Card>
@@ -1137,6 +1128,17 @@ export default function Home() {
                         )}
                       </CardContent>
                     </Card>
+                  {/* <BodyStats
+                      currentWeight={todayWeight || userProfile.currentWeight}
+                      targetWeight={userProfile.targetWeight}
+                      bodyFatPercentage={todayBodyFat || userProfile.bodyFatPercentage}
+                      skeletalMuscle={userProfile.skeletalMuscle}
+                      visceralFatIndex={userProfile.visceralFatIndex}
+                      bmr={userProfile.bmr}
+                      dailyCalorieTarget={userProfile.dailyCalorieTarget}
+                      dailyProteinTarget={userProfile.dailyProteinTarget}
+                      goalType={userProfile.goalType}
+                    /> */}
                   </>
                 ) : (
                   <Card>
