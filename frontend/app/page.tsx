@@ -1268,6 +1268,17 @@ export default function Home() {
 
               {/* Streak Tab */}
               <TabsContent value="streak" className="space-y-4">
+                 <Card>
+                  <CardHeader>
+                    <CardTitle>Activity Heatmap</CardTitle>
+                    <CardDescription>
+                      Current month activity • Green = all goals • Yellow = partial • Gray = minimal
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <StreakCalendar logs={streakLogs} monthsToShow={1} />
+                  </CardContent>
+                </Card>
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -1283,17 +1294,7 @@ export default function Home() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Activity Heatmap</CardTitle>
-                    <CardDescription>
-                      Current month activity • Green = all goals • Yellow = partial • Gray = minimal
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <StreakCalendar logs={streakLogs} monthsToShow={1} />
-                  </CardContent>
-                </Card>
+               
               </TabsContent>
 
               {/* Summary Tab */}
