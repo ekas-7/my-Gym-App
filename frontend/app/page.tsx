@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { Droplet, Utensils, Dumbbell, TrendingUp, Target, Calendar as CalendarIcon, Heart, Scale } from "lucide-react";
+import { Droplet, Utensils, Dumbbell, TrendingUp, Target, Calendar as CalendarIcon, Heart, Scale, Sparkles } from "lucide-react";
 import { ExerciseItem } from "@/components/exercise-item";
 import { CardioItem } from "@/components/cardio-item";
 import { BodyStats } from "@/components/body-stats";
@@ -15,11 +15,13 @@ import StreakStats from "@/components/streak-stats";
 import StreakCalendar from "@/components/streak-calendar";
 import SidebarCalendar from "@/components/sidebar-calendar";
 import { MealHistory, MealTypeSelect } from "@/components/meal-history";
+import { ExerciseHistory } from "@/components/exercise-history";
 import { WeightGraph } from "@/components/weight-graph";
 import { cardioExercises, weightTrainingCategories } from "@/lib/exercises";
 import { calculateGoalsCompleted } from "@/lib/streak-utils";
 import { IFitnessLog } from "@/models/FitnessLog";
 import { IMeal } from "@/models/Meal";
+import { IExercise } from "@/models/Exercise";
 
 interface SummaryData {
   period: string;
@@ -77,6 +79,10 @@ export default function Home() {
   // Exercise state
   const [exerciseMinutes, setExerciseMinutes] = useState(0);
   const [exerciseGoal, setExerciseGoal] = useState(60); // Will be updated from profile
+  const [exerciseDescription, setExerciseDescription] = useState('');
+  const [isAnalyzingExercise, setIsAnalyzingExercise] = useState(false);
+  const [exerciseAnalysisError, setExerciseAnalysisError] = useState('');
+  const [exercises, setExercises] = useState<IExercise[]>([]);
 
   // User profile state
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -108,6 +114,7 @@ export default function Home() {
     fetchUserProfile();
     fetchStreakData();
     fetchMeals();
+    fetchExercises();
   }, []);
 
   // Fetch summary data when period changes
@@ -199,6 +206,31 @@ export default function Home() {
     }
   };
 
+  // Fetch today's exercises
+  const fetchExercises = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const response = await fetch(`/api/exercises?date=${today}`);
+      const result = await response.json();
+      if (result.success) {
+        setExercises(result.data);
+        // Calculate total minutes from exercises
+        const totalMinutes = result.data.reduce((sum: number, ex: IExercise) => {
+          if (ex.duration) {
+            return sum + ex.duration;
+          } else if (ex.sets && ex.sets.length > 0) {
+            // Assume 2 minutes per set for weight training
+            return sum + (ex.sets.length * 2);
+          }
+          return sum;
+        }, 0);
+        setExerciseMinutes(totalMinutes);
+      }
+    } catch (error) {
+      console.error('Error fetching exercises:', error);
+    }
+  };
+
   // Delete meal
   const handleDeleteMeal = async (id: string) => {
     try {
@@ -209,6 +241,19 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error deleting meal:', error);
+    }
+  };
+
+  // Delete exercise
+  const handleDeleteExercise = async (id: string) => {
+    try {
+      const response = await fetch(`/api/exercises?id=${id}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (result.success) {
+        fetchExercises(); // Refresh exercises to recalculate totals
+      }
+    } catch (error) {
+      console.error('Error deleting exercise:', error);
     }
   };
 
@@ -383,6 +428,88 @@ export default function Home() {
     }
   };
   
+  const analyzeExercise = async () => {
+    if (!exerciseDescription.trim()) {
+      setExerciseAnalysisError('Please enter an exercise description');
+      return;
+    }
+
+    setIsAnalyzingExercise(true);
+    setExerciseAnalysisError('');
+
+    try {
+      // First, analyze the exercise with AI
+      const response = await fetch('/api/exercises/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exerciseDescription }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const exerciseData = result.data;
+
+        // Create sets array for weight training
+        let setsArray = [];
+        if (exerciseData.category === 'weight-training' && exerciseData.sets && exerciseData.reps) {
+          for (let i = 1; i <= exerciseData.sets; i++) {
+            setsArray.push({
+              setNumber: i,
+              weight: exerciseData.weight || 0,
+              reps: exerciseData.reps,
+              completed: true,
+            });
+          }
+        }
+
+        // Save to exercises collection
+        const exerciseResponse = await fetch('/api/exercises', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: exerciseData.name,
+            category: exerciseData.category,
+            muscleGroup: exerciseData.muscleGroup,
+            sets: setsArray,
+            duration: exerciseData.duration,
+            distance: exerciseData.distance,
+            caloriesBurned: exerciseData.caloriesBurned,
+            notes: exerciseData.notes,
+            isAIAnalyzed: true,
+            description: exerciseDescription,
+            date: new Date(),
+          }),
+        });
+
+        const exerciseResult = await exerciseResponse.json();
+        
+        if (exerciseResult.success) {
+          // Update exercise minutes
+          const minutesToAdd = exerciseData.duration || (exerciseData.sets ? exerciseData.sets * 2 : 0);
+          const newExerciseMinutes = exerciseMinutes + minutesToAdd;
+          setExerciseMinutes(newExerciseMinutes);
+
+          // Update FitnessLog for streak tracking
+          updateFitnessData({ exerciseMinutes: newExerciseMinutes });
+
+          // Refresh exercise history
+          fetchExercises();
+          setExerciseDescription('');
+        } else {
+          setExerciseAnalysisError('Failed to save exercise to database');
+        }
+      } else {
+        setExerciseAnalysisError(result.error || 'Failed to analyze exercise');
+      }
+    } catch (error) {
+      console.error('Error analyzing exercise:', error);
+      setExerciseAnalysisError('Network error. Please try again.');
+    } finally {
+      setIsAnalyzingExercise(false);
+    }
+  };
+
   const addExercise = (minutes: number) => {
     const newValue = Math.min(exerciseMinutes + minutes, exerciseGoal);
     setExerciseMinutes(newValue);
@@ -427,6 +554,45 @@ export default function Home() {
       }
       return newSet;
     });
+  };
+
+  // Save quick-add exercise to database
+  const saveQuickAddExercise = async (exerciseName: string, category: 'cardio' | 'weight-training', duration?: number, sets?: number, reps?: string, muscleGroup?: string) => {
+    try {
+      const setsArray = [];
+      if (category === 'weight-training' && sets && reps) {
+        // Parse reps (e.g., "8-12" -> 10)
+        const repsNum = parseInt(reps.split('-')[0]) || 10;
+        for (let i = 1; i <= sets; i++) {
+          setsArray.push({
+            setNumber: i,
+            weight: 0, // User can update later
+            reps: repsNum,
+            completed: true,
+          });
+        }
+      }
+
+      await fetch('/api/exercises', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: exerciseName,
+          category: category,
+          muscleGroup: muscleGroup,
+          sets: setsArray,
+          duration: duration,
+          caloriesBurned: duration ? duration * 8 : sets ? sets * 15 : 0, // Rough estimate
+          isAIAnalyzed: false,
+          date: new Date(),
+        }),
+      });
+
+      // Refresh exercises
+      fetchExercises();
+    } catch (error) {
+      console.error('Error saving quick-add exercise:', error);
+    }
   };
 
   return (
@@ -661,7 +827,7 @@ export default function Home() {
                 </Card>
               </TabsContent>
 
-              {/* Exercise Tab */}
+                            {/* Exercise Tab */}
               <TabsContent value="exercise" className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -671,7 +837,7 @@ export default function Home() {
                           <Dumbbell className="h-5 w-5 text-purple-500" />
                           Exercise Tracking
                         </CardTitle>
-                        <CardDescription>Choose your workout type and log exercises</CardDescription>
+                        <CardDescription>AI-powered exercise logging or choose from presets</CardDescription>
                       </div>
                       {isMounted && !isLoading && (
                         <Badge variant={exerciseMinutes >= exerciseGoal ? "default" : "secondary"}>
@@ -695,24 +861,64 @@ export default function Home() {
                           <Progress value={(exerciseMinutes / exerciseGoal) * 100} className="h-3" />
                         </div>
 
+                        {/* AI Exercise Input */}
+                        <div className="space-y-3 border-b pb-4 mb-4">
+                          <label className="text-sm font-medium">Describe your workout</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={exerciseDescription}
+                              onChange={(e) => setExerciseDescription(e.target.value)}
+                              placeholder="e.g., 3 sets of 10 reps bench press at 80kg, or 30 minute run 5km"
+                              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              onKeyPress={(e) => e.key === 'Enter' && analyzeExercise()}
+                              disabled={isAnalyzingExercise}
+                            />
+                            <Button 
+                              onClick={analyzeExercise} 
+                              disabled={isAnalyzingExercise || !exerciseDescription.trim()}
+                            >
+                              {isAnalyzingExercise ? 'Analyzing...' : 'Add Exercise'}
+                            </Button>
+                          </div>
+                          {exerciseAnalysisError && (
+                            <div className="text-sm text-red-600 dark:text-red-400">{exerciseAnalysisError}</div>
+                          )}
+                          <div className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            Powered by Gemini AI - Enter any exercise description for automatic tracking
+                          </div>
+                        </div>
+
+                        {/* Exercise History */}
+                        <div className="border-b pb-4">
+                          <ExerciseHistory exercises={exercises} onDelete={handleDeleteExercise} />
+                        </div>
+
                         {/* Category Selector */}
-                        <div className="flex gap-2">
-                          <Button
-                            variant={exerciseCategory === 'cardio' ? 'default' : 'outline'}
-                            onClick={() => setExerciseCategory('cardio')}
-                            className="flex-1"
-                          >
-                            <Heart className="h-4 w-4 mr-2" />
-                            Cardio
-                          </Button>
-                          <Button
-                            variant={exerciseCategory === 'weight-training' ? 'default' : 'outline'}
-                            onClick={() => setExerciseCategory('weight-training')}
-                            className="flex-1"
-                          >
-                            <Dumbbell className="h-4 w-4 mr-2" />
-                            Weight Training
-                          </Button>
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-semibold flex items-center gap-2">
+                            <Dumbbell className="h-4 w-4" />
+                            Quick Add Exercises
+                          </h3>
+                          <div className="flex gap-2">
+                            <Button
+                              variant={exerciseCategory === 'cardio' ? 'default' : 'outline'}
+                              onClick={() => setExerciseCategory('cardio')}
+                              className="flex-1"
+                            >
+                              <Heart className="h-4 w-4 mr-2" />
+                              Cardio
+                            </Button>
+                            <Button
+                              variant={exerciseCategory === 'weight-training' ? 'default' : 'outline'}
+                              onClick={() => setExerciseCategory('weight-training')}
+                              className="flex-1"
+                            >
+                              <Dumbbell className="h-4 w-4 mr-2" />
+                              Weight Training
+                            </Button>
+                          </div>
                         </div>
 
                         {/* Cardio Exercises */}
@@ -726,10 +932,11 @@ export default function Home() {
                                   name={exercise.name}
                                   duration={exercise.duration}
                                   isCompleted={completedExercises.has(exercise.id)}
-                                  onToggle={() => {
+                                  onToggle={async () => {
                                     toggleExercise(exercise.id);
                                     if (!completedExercises.has(exercise.id)) {
                                       addExercise(exercise.duration);
+                                      await saveQuickAddExercise(exercise.name, 'cardio', exercise.duration);
                                     }
                                   }}
                                 />
@@ -771,11 +978,19 @@ export default function Home() {
                                         reps={exercise.reps}
                                         sets={exercise.sets}
                                         isCompleted={completedExercises.has(exercise.id)}
-                                        onToggle={() => {
+                                        onToggle={async () => {
                                           toggleExercise(exercise.id);
                                           if (!completedExercises.has(exercise.id)) {
                                             // Assume 2 minutes per set
                                             addExercise(exercise.sets * 2);
+                                            await saveQuickAddExercise(
+                                              exercise.name, 
+                                              'weight-training', 
+                                              undefined, 
+                                              exercise.sets, 
+                                              exercise.reps,
+                                              category.id
+                                            );
                                           }
                                         }}
                                       />
@@ -791,7 +1006,7 @@ export default function Home() {
                           setCompletedExercises(new Set());
                           updateFitnessData({ exerciseMinutes: 0 });
                         }} className="w-full">
-                          Reset All Exercises
+                          Reset Daily Progress
                         </Button>
                       </>
                     )}

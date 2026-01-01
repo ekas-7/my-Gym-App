@@ -21,6 +21,8 @@ export interface IExercise {
   distance?: number; // Distance in km (for running/cycling)
   notes?: string; // User notes about the exercise
   caloriesBurned?: number; // Estimated calories burned
+  isAIAnalyzed?: boolean; // Whether this exercise was analyzed by AI
+  description?: string; // Original description entered by user
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -95,6 +97,14 @@ const ExerciseSchema = new Schema<IExercise>(
     caloriesBurned: {
       type: Number,
       min: 0,
+    },
+    isAIAnalyzed: {
+      type: Boolean,
+      default: false,
+    },
+    description: {
+      type: String,
+      trim: true,
     },
   },
   {
