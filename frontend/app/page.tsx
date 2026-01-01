@@ -160,6 +160,70 @@ export default function Home() {
     setAiAnalysis(null);
   }, [summaryPeriod]);
 
+  // Daily reset check - refresh data when day changes
+  useEffect(() => {
+    if (!isMounted) return;
+
+    // Store the current date
+    let currentDate = new Date().toDateString();
+
+    // Check every minute if the day has changed
+    const checkDayChange = setInterval(() => {
+      const newDate = new Date().toDateString();
+      
+      if (newDate !== currentDate) {
+        console.log('Day changed - refreshing fitness data...');
+        currentDate = newDate;
+        
+        // Refresh all data for the new day
+        fetchTodayData();
+        fetchMeals();
+        fetchExercises();
+        fetchStreakData();
+        fetchSummaryData();
+        
+        // Update the date state
+        setDate(new Date());
+      }
+    }, 60000); // Check every minute
+
+    // Also set up a timer to specifically trigger at midnight
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const msUntilMidnight = tomorrow.getTime() - now.getTime();
+
+    const midnightTimer = setTimeout(() => {
+      console.log('Midnight reached - refreshing fitness data...');
+      fetchTodayData();
+      fetchMeals();
+      fetchExercises();
+      fetchStreakData();
+      fetchSummaryData();
+      setDate(new Date());
+      
+      // Set up recurring midnight refresh (every 24 hours)
+      const recurringMidnightTimer = setInterval(() => {
+        console.log('Midnight reached - refreshing fitness data...');
+        fetchTodayData();
+        fetchMeals();
+        fetchExercises();
+        fetchStreakData();
+        fetchSummaryData();
+        setDate(new Date());
+      }, 24 * 60 * 60 * 1000); // Every 24 hours
+
+      return () => clearInterval(recurringMidnightTimer);
+    }, msUntilMidnight);
+
+    // Cleanup on unmount
+    return () => {
+      clearInterval(checkDayChange);
+      clearTimeout(midnightTimer);
+    };
+  }, [isMounted]);
+
   const fetchUserProfile = async () => {
     try {
       const response = await fetch('/api/profile');
