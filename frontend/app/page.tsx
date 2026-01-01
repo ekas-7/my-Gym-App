@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Droplet, Utensils, Dumbbell, TrendingUp, Target, Calendar as CalendarIcon, Heart, Scale, Sparkles } from "lucide-react";
 import { ExerciseItem } from "@/components/exercise-item";
+import { CustomizableExerciseItem } from "@/components/customizable-exercise-item";
 import { CardioItem } from "@/components/cardio-item";
+import { CustomizableCardioItem } from "@/components/customizable-cardio-item";
 import { BodyStats } from "@/components/body-stats";
 import StreakStats from "@/components/streak-stats";
 import StreakCalendar from "@/components/streak-calendar";
@@ -103,7 +105,7 @@ export default function Home() {
   // Exercise tracking state
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [exerciseCategory, setExerciseCategory] = useState<'cardio' | 'weight-training'>('cardio');
-  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<'chest' | 'back' | 'shoulders'>('chest');
+  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<'chest' | 'back' | 'shoulders' | 'biceps' | 'triceps' | 'abs' | 'legs'>('chest');
 
   // Streak tracking state
   const [streakLogs, setStreakLogs] = useState<IFitnessLog[]>([]);
@@ -559,7 +561,7 @@ export default function Home() {
   };
 
   // Save quick-add exercise to database
-  const saveQuickAddExercise = async (exerciseName: string, category: 'cardio' | 'weight-training', duration?: number, sets?: number, reps?: string, muscleGroup?: string) => {
+  const saveQuickAddExercise = async (exerciseName: string, category: 'cardio' | 'weight-training', duration?: number, sets?: number, reps?: string, muscleGroup?: string, weight?: number, distance?: number) => {
     try {
       const setsArray = [];
       if (category === 'weight-training' && sets && reps) {
@@ -568,7 +570,7 @@ export default function Home() {
         for (let i = 1; i <= sets; i++) {
           setsArray.push({
             setNumber: i,
-            weight: 0, // User can update later
+            weight: weight || 0,
             reps: repsNum,
             completed: true,
           });
@@ -584,6 +586,7 @@ export default function Home() {
           muscleGroup: muscleGroup,
           sets: setsArray,
           duration: duration,
+          distance: distance,
           caloriesBurned: duration ? duration * 8 : sets ? sets * 15 : 0, // Rough estimate
           isAIAnalyzed: false,
           date: new Date(),
@@ -930,17 +933,27 @@ export default function Home() {
                             <h3 className="text-sm font-semibold">Cardio Exercises</h3>
                             <div className="grid grid-cols-1 gap-2">
                               {cardioExercises.map((exercise) => (
-                                <CardioItem
+                                <CustomizableCardioItem
                                   key={exercise.id}
                                   name={exercise.name}
-                                  duration={exercise.duration}
+                                  defaultDuration={exercise.duration}
+                                  defaultDistance={exercise.distance}
                                   isCompleted={completedExercises.has(exercise.id)}
-                                  onToggle={async () => {
+                                  onAdd={async (duration, distance) => {
                                     const wasCompleted = completedExercises.has(exercise.id);
                                     toggleExercise(exercise.id);
                                     if (!wasCompleted) {
-                                      // Save to database and refresh
-                                      await saveQuickAddExercise(exercise.name, 'cardio', exercise.duration);
+                                      // Save to database and refresh with custom values
+                                      await saveQuickAddExercise(
+                                        exercise.name, 
+                                        'cardio', 
+                                        duration,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        distance
+                                      );
                                     }
                                   }}
                                 />
@@ -953,17 +966,17 @@ export default function Home() {
                         {exerciseCategory === 'weight-training' && (
                           <div className="space-y-3">
                             {/* Muscle Group Selector */}
-                            <div className="flex gap-2">
+                            <div className="grid grid-cols-4 gap-2">
                               {weightTrainingCategories.map((category) => (
                                 <Button
                                   key={category.id}
                                   size="sm"
                                   variant={selectedMuscleGroup === category.id ? 'default' : 'outline'}
                                   onClick={() => setSelectedMuscleGroup(category.id)}
-                                  className="flex-1"
+                                  className="flex flex-col h-auto py-2 px-2"
                                 >
-                                  <span className="mr-1">{category.icon}</span>
-                                  {category.name}
+                                  <span className="text-lg mb-1">{category.icon}</span>
+                                  <span className="text-xs">{category.name}</span>
                                 </Button>
                               ))}
                             </div>
@@ -976,24 +989,26 @@ export default function Home() {
                                   <h3 className="text-sm font-semibold">{category.name} Exercises</h3>
                                   <div className="grid grid-cols-1 gap-2">
                                     {category.exercises.map((exercise) => (
-                                      <ExerciseItem
+                                      <CustomizableExerciseItem
                                         key={exercise.id}
                                         name={exercise.name}
-                                        reps={exercise.reps}
-                                        sets={exercise.sets}
+                                        defaultReps={exercise.reps}
+                                        defaultSets={exercise.sets}
+                                        defaultWeight={0}
                                         isCompleted={completedExercises.has(exercise.id)}
-                                        onToggle={async () => {
+                                        onAdd={async (sets, reps, weight) => {
                                           const wasCompleted = completedExercises.has(exercise.id);
                                           toggleExercise(exercise.id);
                                           if (!wasCompleted) {
-                                            // Save to database and refresh
+                                            // Save to database and refresh with custom values
                                             await saveQuickAddExercise(
                                               exercise.name, 
                                               'weight-training', 
                                               undefined, 
-                                              exercise.sets, 
-                                              exercise.reps,
-                                              category.id
+                                              sets, 
+                                              reps,
+                                              category.id,
+                                              weight
                                             );
                                           }
                                         }}
