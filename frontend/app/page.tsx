@@ -15,6 +15,7 @@ import StreakStats from "@/components/streak-stats";
 import StreakCalendar from "@/components/streak-calendar";
 import SidebarCalendar from "@/components/sidebar-calendar";
 import { MealHistory, MealTypeSelect } from "@/components/meal-history";
+import { WeightGraph } from "@/components/weight-graph";
 import { cardioExercises, weightTrainingCategories } from "@/lib/exercises";
 import { calculateGoalsCompleted } from "@/lib/streak-utils";
 import { IFitnessLog } from "@/models/FitnessLog";
@@ -802,6 +803,9 @@ export default function Home() {
               <TabsContent value="weight" className="space-y-4">
                 {userProfile ? (
                   <>
+                    {/* Weight Graph - At the Top */}
+                    <WeightGraph days={30} targetWeight={userProfile.targetWeight} />
+                    
                     <BodyStats
                       currentWeight={todayWeight || userProfile.currentWeight}
                       targetWeight={userProfile.targetWeight}
@@ -871,12 +875,28 @@ export default function Home() {
                         <Button 
                           onClick={async () => {
                             if (todayWeight) {
+                              // Save to WeightLog collection
+                              await fetch('/api/weight-log', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  date: new Date(),
+                                  weight: todayWeight,
+                                  bodyFatPercentage: todayBodyFat || undefined,
+                                }),
+                              });
+                              
+                              // Also update FitnessLog for today
                               await updateFitnessData({ 
                                 weight: todayWeight, 
                                 bodyFatPercentage: todayBodyFat || undefined 
                               });
+                              
                               // Refresh today's data to show it's saved
                               await fetchTodayData();
+                              
+                              // Trigger a re-render of the graph by updating a key
+                              window.location.reload();
                             }
                           }}
                           disabled={!todayWeight}
