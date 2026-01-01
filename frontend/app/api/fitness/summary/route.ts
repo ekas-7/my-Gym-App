@@ -50,19 +50,28 @@ export async function GET(request: NextRequest) {
       totalDays: logs.length,
     };
 
+    // Sum up consumed values
     logs.forEach((log) => {
       summary.water.consumed += log.waterLiters;
-      summary.water.goal += log.waterGoal;
       summary.calories.consumed += log.calories;
-      summary.calories.goal += log.calorieGoal;
       summary.exercise.minutes += log.exerciseMinutes;
-      summary.exercise.goal += log.exerciseGoal;
     });
 
+    // For goals, use the average daily goal (not sum)
+    // This way for "day" we get 4L, not 4L * number of days
     if (logs.length > 0) {
-      summary.water.percentage = Math.round((summary.water.consumed / summary.water.goal) * 100);
-      summary.calories.percentage = Math.round((summary.calories.consumed / summary.calories.goal) * 100);
-      summary.exercise.percentage = Math.round((summary.exercise.minutes / summary.exercise.goal) * 100);
+      const totalWaterGoal = logs.reduce((sum, log) => sum + log.waterGoal, 0);
+      const totalCalorieGoal = logs.reduce((sum, log) => sum + log.calorieGoal, 0);
+      const totalExerciseGoal = logs.reduce((sum, log) => sum + log.exerciseGoal, 0);
+      
+      summary.water.goal = totalWaterGoal / logs.length;
+      summary.calories.goal = totalCalorieGoal / logs.length;
+      summary.exercise.goal = totalExerciseGoal / logs.length;
+      
+      // For percentage, compare total consumed vs (average daily goal * number of days)
+      summary.water.percentage = Math.round((summary.water.consumed / (summary.water.goal * logs.length)) * 100);
+      summary.calories.percentage = Math.round((summary.calories.consumed / (summary.calories.goal * logs.length)) * 100);
+      summary.exercise.percentage = Math.round((summary.exercise.minutes / (summary.exercise.goal * logs.length)) * 100);
     }
 
     return NextResponse.json({ success: true, data: summary });

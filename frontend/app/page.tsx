@@ -127,6 +127,24 @@ export default function Home() {
   // Streak tracking state
   const [streakLogs, setStreakLogs] = useState<IFitnessLog[]>([]);
 
+  // Active tab state with persistence
+  const [activeTab, setActiveTab] = useState<string>('hydration');
+
+  // Load active tab from localStorage on mount
+  useEffect(() => {
+    const savedTab = localStorage.getItem('fitnessAppActiveTab');
+    if (savedTab) {
+      setActiveTab(savedTab);
+    }
+  }, []);
+
+  // Save active tab to localStorage when it changes
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem('fitnessAppActiveTab', activeTab);
+    }
+  }, [activeTab, isMounted]);
+
   // Fetch today's fitness data on mount
   useEffect(() => {
     fetchTodayData();
@@ -706,7 +724,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content - Tabs */}
           <div className="lg:col-span-2">
-            <Tabs defaultValue="hydration" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="hydration">Hydration</TabsTrigger>
                 <TabsTrigger value="diet">Diet</TabsTrigger>
@@ -1347,7 +1365,7 @@ export default function Home() {
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Consumed</span>
                               <span className="font-medium">
-                                {getSummaryData(summaryPeriod).water.consumed.toFixed(2)} / {getSummaryData(summaryPeriod).water.goal.toFixed(2)} L
+                                {getSummaryData(summaryPeriod).water.consumed.toFixed(2)} / {(getSummaryData(summaryPeriod).water.goal * (summaryPeriod === 'day' ? 1 : getSummaryData(summaryPeriod).totalDays)).toFixed(2)} L
                               </span>
                             </div>
                             <Progress value={getSummaryData(summaryPeriod).water.percentage} className="h-2" />
@@ -1369,7 +1387,7 @@ export default function Home() {
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Consumed</span>
                               <span className="font-medium">
-                                {getSummaryData(summaryPeriod).calories.consumed.toLocaleString()} / {getSummaryData(summaryPeriod).calories.goal.toLocaleString()} kcal
+                                {getSummaryData(summaryPeriod).calories.consumed.toLocaleString()} / {Math.round(getSummaryData(summaryPeriod).calories.goal * (summaryPeriod === 'day' ? 1 : getSummaryData(summaryPeriod).totalDays)).toLocaleString()} kcal
                               </span>
                             </div>
                             <Progress value={getSummaryData(summaryPeriod).calories.percentage} className="h-2" />
@@ -1391,7 +1409,7 @@ export default function Home() {
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Completed</span>
                               <span className="font-medium">
-                                {getSummaryData(summaryPeriod).exercise.minutes.toLocaleString()} / {getSummaryData(summaryPeriod).exercise.goal.toLocaleString()} min
+                                {getSummaryData(summaryPeriod).exercise.minutes.toLocaleString()} / {Math.round(getSummaryData(summaryPeriod).exercise.goal * (summaryPeriod === 'day' ? 1 : getSummaryData(summaryPeriod).totalDays)).toLocaleString()} min
                               </span>
                             </div>
                             <Progress value={getSummaryData(summaryPeriod).exercise.percentage} className="h-2" />
