@@ -114,6 +114,7 @@ export default function Home() {
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
@@ -138,6 +139,8 @@ export default function Home() {
   // Fetch summary data when period changes
   useEffect(() => {
     fetchSummaryData();
+    // Clear AI analysis when period changes so user knows to re-analyze
+    setAiAnalysis(null);
   }, [summaryPeriod]);
 
   const fetchUserProfile = async () => {
@@ -179,6 +182,7 @@ export default function Home() {
   };
 
   const fetchSummaryData = async () => {
+    setIsSummaryLoading(true);
     try {
       const response = await fetch(`/api/fitness/summary?period=${summaryPeriod}`);
       const result = await response.json();
@@ -188,6 +192,8 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error fetching summary:', error);
+    } finally {
+      setIsSummaryLoading(false);
     }
   };
 
@@ -1317,146 +1323,157 @@ export default function Home() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Water Summary */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Droplet className="h-5 w-5 text-blue-500" />
-                          <h3 className="font-semibold">Water Intake</h3>
+                    {isSummaryLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center space-y-3">
+                          <Loader2 className="h-8 w-8 animate-spin mx-auto text-orange-500" />
+                          <p className="text-sm text-muted-foreground">Loading {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} summary...</p>
                         </div>
-                        <Badge variant={getSummaryData(summaryPeriod).water.percentage >= 100 ? "default" : "secondary"}>
-                          {getSummaryData(summaryPeriod).water.percentage}%
-                        </Badge>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Consumed</span>
-                          <span className="font-medium">
-                            {getSummaryData(summaryPeriod).water.consumed.toFixed(2)} / {getSummaryData(summaryPeriod).water.goal.toFixed(2)} L
-                          </span>
+                    ) : (
+                      <>
+                        {/* Water Summary */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Droplet className="h-5 w-5 text-blue-500" />
+                              <h3 className="font-semibold">Water Intake</h3>
+                            </div>
+                            <Badge variant={getSummaryData(summaryPeriod).water.percentage >= 100 ? "default" : "secondary"}>
+                              {getSummaryData(summaryPeriod).water.percentage}%
+                            </Badge>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Consumed</span>
+                              <span className="font-medium">
+                                {getSummaryData(summaryPeriod).water.consumed.toFixed(2)} / {getSummaryData(summaryPeriod).water.goal.toFixed(2)} L
+                              </span>
+                            </div>
+                            <Progress value={getSummaryData(summaryPeriod).water.percentage} className="h-2" />
+                          </div>
                         </div>
-                        <Progress value={getSummaryData(summaryPeriod).water.percentage} className="h-2" />
-                      </div>
-                    </div>
 
-                    {/* Calories Summary */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Utensils className="h-5 w-5 text-green-500" />
-                          <h3 className="font-semibold">Calorie Intake</h3>
+                        {/* Calories Summary */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Utensils className="h-5 w-5 text-green-500" />
+                              <h3 className="font-semibold">Calorie Intake</h3>
+                            </div>
+                            <Badge variant={getSummaryData(summaryPeriod).calories.percentage >= 100 ? "default" : "secondary"}>
+                              {getSummaryData(summaryPeriod).calories.percentage}%
+                            </Badge>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Consumed</span>
+                              <span className="font-medium">
+                                {getSummaryData(summaryPeriod).calories.consumed.toLocaleString()} / {getSummaryData(summaryPeriod).calories.goal.toLocaleString()} kcal
+                              </span>
+                            </div>
+                            <Progress value={getSummaryData(summaryPeriod).calories.percentage} className="h-2" />
+                          </div>
                         </div>
-                        <Badge variant={getSummaryData(summaryPeriod).calories.percentage >= 100 ? "default" : "secondary"}>
-                          {getSummaryData(summaryPeriod).calories.percentage}%
-                        </Badge>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Consumed</span>
-                          <span className="font-medium">
-                            {getSummaryData(summaryPeriod).calories.consumed.toLocaleString()} / {getSummaryData(summaryPeriod).calories.goal.toLocaleString()} kcal
-                          </span>
-                        </div>
-                        <Progress value={getSummaryData(summaryPeriod).calories.percentage} className="h-2" />
-                      </div>
-                    </div>
 
-                    {/* Exercise Summary */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Dumbbell className="h-5 w-5 text-purple-500" />
-                          <h3 className="font-semibold">Exercise Time</h3>
+                        {/* Exercise Summary */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Dumbbell className="h-5 w-5 text-purple-500" />
+                              <h3 className="font-semibold">Exercise Time</h3>
+                            </div>
+                            <Badge variant={getSummaryData(summaryPeriod).exercise.percentage >= 100 ? "default" : "secondary"}>
+                              {getSummaryData(summaryPeriod).exercise.percentage}%
+                            </Badge>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Completed</span>
+                              <span className="font-medium">
+                                {getSummaryData(summaryPeriod).exercise.minutes.toLocaleString()} / {getSummaryData(summaryPeriod).exercise.goal.toLocaleString()} min
+                              </span>
+                            </div>
+                            <Progress value={getSummaryData(summaryPeriod).exercise.percentage} className="h-2" />
+                          </div>
                         </div>
-                        <Badge variant={getSummaryData(summaryPeriod).exercise.percentage >= 100 ? "default" : "secondary"}>
-                          {getSummaryData(summaryPeriod).exercise.percentage}%
-                        </Badge>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Completed</span>
-                          <span className="font-medium">
-                            {getSummaryData(summaryPeriod).exercise.minutes.toLocaleString()} / {getSummaryData(summaryPeriod).exercise.goal.toLocaleString()} min
-                          </span>
-                        </div>
-                        <Progress value={getSummaryData(summaryPeriod).exercise.percentage} className="h-2" />
-                      </div>
-                    </div>
 
-                    {/* Overall Stats */}
-                    <div className="pt-4 border-t">
-                      <div className="text-center space-y-2">
-                        <div className="text-4xl font-bold text-primary">
-                          {Math.round(
-                            (getSummaryData(summaryPeriod).water.percentage +
-                              getSummaryData(summaryPeriod).calories.percentage +
-                              getSummaryData(summaryPeriod).exercise.percentage) / 3
-                          )}%
+                        {/* Overall Stats */}
+                        <div className="pt-4 border-t">
+                          <div className="text-center space-y-2">
+                            <div className="text-4xl font-bold text-primary">
+                              {Math.round(
+                                (getSummaryData(summaryPeriod).water.percentage +
+                                  getSummaryData(summaryPeriod).calories.percentage +
+                                  getSummaryData(summaryPeriod).exercise.percentage) / 3
+                              )}%
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Overall {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} completion
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          Overall {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} completion
-                        </p>
-                      </div>
-                    </div>
 
-                    {/* Quick Stats Grid */}
-                    <div className="grid grid-cols-3 gap-4 pt-2">
-                      <div className="text-center space-y-1 p-3 bg-blue-500/10 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-500">
-                          {getSummaryData(summaryPeriod).water.consumed.toFixed(1)}
+                        {/* Quick Stats Grid */}
+                        <div className="grid grid-cols-3 gap-4 pt-2">
+                          <div className="text-center space-y-1 p-3 bg-blue-500/10 rounded-lg">
+                            <div className="text-2xl font-bold text-blue-500">
+                              {getSummaryData(summaryPeriod).water.consumed.toFixed(1)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Liters</div>
+                          </div>
+                          <div className="text-center space-y-1 p-3 bg-green-500/10 rounded-lg">
+                            <div className="text-2xl font-bold text-green-500">
+                              {(getSummaryData(summaryPeriod).calories.consumed / 1000).toFixed(1)}k
+                            </div>
+                            <div className="text-xs text-muted-foreground">Calories</div>
+                          </div>
+                          <div className="text-center space-y-1 p-3 bg-purple-500/10 rounded-lg">
+                            <div className="text-2xl font-bold text-purple-500">
+                              {getSummaryData(summaryPeriod).exercise.minutes}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Minutes</div>
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">Liters</div>
-                      </div>
-                      <div className="text-center space-y-1 p-3 bg-green-500/10 rounded-lg">
-                        <div className="text-2xl font-bold text-green-500">
-                          {(getSummaryData(summaryPeriod).calories.consumed / 1000).toFixed(1)}k
-                        </div>
-                        <div className="text-xs text-muted-foreground">Calories</div>
-                      </div>
-                      <div className="text-center space-y-1 p-3 bg-purple-500/10 rounded-lg">
-                        <div className="text-2xl font-bold text-purple-500">
-                          {getSummaryData(summaryPeriod).exercise.minutes}
-                        </div>
-                        <div className="text-xs text-muted-foreground">Minutes</div>
-                      </div>
-                    </div>
 
-                    {/* Export Buttons */}
-                    <div className="pt-4 border-t">
-                      <h3 className="font-semibold mb-3 flex items-center gap-2">
-                        <Download className="h-4 w-4" />
-                        Export Report
-                      </h3>
-                      <div className="flex gap-2 flex-wrap">
-                        <Button 
-                          variant="outline" 
-                          onClick={exportCSV}
-                          disabled={isExporting}
-                        >
-                          {isExporting ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <FileText className="h-4 w-4 mr-2" />
-                          )}
-                          Export CSV
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={exportJSON}
-                          disabled={isExporting}
-                        >
-                          {isExporting ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Download className="h-4 w-4 mr-2" />
-                          )}
-                          Export JSON
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Download your {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} fitness data including meals and exercises
-                      </p>
-                    </div>
+                        {/* Export Buttons */}
+                        <div className="pt-4 border-t">
+                          <h3 className="font-semibold mb-3 flex items-center gap-2">
+                            <Download className="h-4 w-4" />
+                            Export Report
+                          </h3>
+                          <div className="flex gap-2 flex-wrap">
+                            <Button 
+                              variant="outline" 
+                              onClick={exportCSV}
+                              disabled={isExporting}
+                            >
+                              {isExporting ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <FileText className="h-4 w-4 mr-2" />
+                              )}
+                              Export CSV
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              onClick={exportJSON}
+                              disabled={isExporting}
+                            >
+                              {isExporting ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4 mr-2" />
+                              )}
+                              Export JSON
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Download your {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} fitness data including meals and exercises
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 
