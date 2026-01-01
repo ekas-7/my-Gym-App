@@ -13,9 +13,11 @@ import { CardioItem } from "@/components/cardio-item";
 import { BodyStats } from "@/components/body-stats";
 import StreakStats from "@/components/streak-stats";
 import StreakCalendar from "@/components/streak-calendar";
+import { MealHistory, MealTypeSelect } from "@/components/meal-history";
 import { cardioExercises, weightTrainingCategories } from "@/lib/exercises";
 import { calculateGoalsCompleted } from "@/lib/streak-utils";
 import { IFitnessLog } from "@/models/FitnessLog";
+import { IMeal } from "@/models/Meal";
 
 interface SummaryData {
   period: string;
@@ -67,6 +69,8 @@ export default function Home() {
   const [foodDescription, setFoodDescription] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
+  const [mealType, setMealType] = useState<string>('other');
+  const [meals, setMeals] = useState<IMeal[]>([]);
 
   // Exercise state
   const [exerciseMinutes, setExerciseMinutes] = useState(0);
@@ -101,6 +105,7 @@ export default function Home() {
     fetchTodayData();
     fetchUserProfile();
     fetchStreakData();
+    fetchMeals();
   }, []);
 
   // Fetch summary data when period changes
@@ -169,6 +174,39 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error fetching streak data:', error);
+    }
+  };
+
+  // Fetch today's meals
+  const fetchMeals = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const response = await fetch(`/api/meals?date=${today}&getTotals=true`);
+      const result = await response.json();
+      if (result.success) {
+        setMeals(result.data);
+        if (result.totals) {
+          setCalories(result.totals.totalCalories);
+          setCarbs(result.totals.totalCarbs);
+          setFats(result.totals.totalFats);
+          setProtein(result.totals.totalProtein);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching meals:', error);
+    }
+  };
+
+  // Delete meal
+  const handleDeleteMeal = async (id: string) => {
+    try {
+      const response = await fetch(`/api/meals?id=${id}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (result.success) {
+        fetchMeals(); // Refresh meals to recalculate totals
+      }
+    } catch (error) {
+      console.error('Error deleting meal:', error);
     }
   };
 
@@ -261,6 +299,7 @@ export default function Home() {
     setAnalysisError('');
 
     try {
+      // First, analyze the food with AI
       const response = await fetch('/api/diet/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -270,24 +309,53 @@ export default function Home() {
       const result = await response.json();
 
       if (result.success) {
-        const newCalories = calories + result.data.calories;
-        const newCarbs = carbs + result.data.carbs;
-        const newFats = fats + result.data.fats;
-        const newProtein = protein + result.data.protein;
+        const { calories: cal, carbs: c, fats: f, protein: p } = result.data;
 
-        setCalories(newCalories);
-        setCarbs(newCarbs);
-        setFats(newFats);
-        setProtein(newProtein);
-
-        updateFitnessData({ 
-          calories: newCalories,
-          carbs: newCarbs,
-          fats: newFats,
-          protein: newProtein,
+        // Save to meals collection
+        const mealResponse = await fetch('/api/meals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            description: foodDescription,
+            mealType: mealType,
+            calories: cal,
+            carbs: c,
+            fats: f,
+            protein: p,
+            isAIAnalyzed: true,
+            date: new Date(),
+            timestamp: new Date(),
+          }),
         });
 
-        setFoodDescription('');
+        const mealResult = await mealResponse.json();
+        
+        if (mealResult.success) {
+          // Update totals
+          const newCalories = calories + cal;
+          const newCarbs = carbs + c;
+          const newFats = fats + f;
+          const newProtein = protein + p;
+
+          setCalories(newCalories);
+          setCarbs(newCarbs);
+          setFats(newFats);
+          setProtein(newProtein);
+
+          // Update FitnessLog for streak tracking
+          updateFitnessData({ 
+            calories: newCalories,
+            carbs: newCarbs,
+            fats: newFats,
+            protein: newProtein,
+          });
+
+          // Refresh meal history
+          fetchMeals();
+          setFoodDescription('');
+        } else {
+          setAnalysisError('Failed to save meal to database');
+        }
       } else {
         setAnalysisError(result.error || 'Failed to analyze food');
       }
@@ -446,6 +514,12 @@ export default function Home() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    {/* Meal Type Selector */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Meal Type</label>
+                      <MealTypeSelect value={mealType} onChange={setMealType} />
+                    </div>
+
                     {/* AI Food Input */}
                     <div className="space-y-3">
                       <label className="text-sm font-medium">Describe your meal</label>
@@ -506,7 +580,7 @@ export default function Home() {
                     </div>
 
                     {/* Macro Distribution */}
-                    <Card className="p-4 bg-gray-50">
+                    <Card className="p-4 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700">
                       <div className="text-sm font-medium mb-3">Macro Distribution</div>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
@@ -523,6 +597,11 @@ export default function Home() {
                         </div>
                       </div>
                     </Card>
+
+                    {/* Meal History */}
+                    <div className="border-t pt-4">
+                      <MealHistory meals={meals} onDelete={handleDeleteMeal} />
+                    </div>
 
                     <Button 
                       variant="outline" 
