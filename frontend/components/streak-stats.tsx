@@ -72,16 +72,16 @@ export default function StreakStats({ logs }: StreakStatsProps) {
   return (
     <div className="space-y-4">
       {/* Current Streak - Hero Card */}
-      <Card className="p-6 bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-200">
+      <Card className="p-6 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30 border-2 border-orange-200 dark:border-orange-800">
         <div className="text-center">
-          <div className="text-sm font-semibold text-orange-700 mb-2 uppercase tracking-wide">
+          <div className="text-sm font-semibold text-orange-700 dark:text-orange-400 mb-2 uppercase tracking-wide">
             {getStreakLevel(currentStreak)}
           </div>
-          <div className="text-5xl font-bold text-orange-600 mb-2">{currentStreak}</div>
-          <div className="text-lg text-gray-700 font-medium mb-1">Day Streak</div>
-          <div className="text-sm text-gray-600">{getStreakMessage(currentStreak)}</div>
+          <div className="text-5xl font-bold text-orange-600 dark:text-orange-400 mb-2">{currentStreak}</div>
+          <div className="text-lg text-gray-700 dark:text-gray-300 font-medium mb-1">Day Streak</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">{getStreakMessage(currentStreak)}</div>
           {currentStreak > 0 && (
-            <Badge className="mt-3 bg-orange-500 hover:bg-orange-600">
+            <Badge className="mt-3 bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700">
               All goals completed {currentStreak} {currentStreak === 1 ? 'day' : 'days'} in a row
             </Badge>
           )}
@@ -91,35 +91,35 @@ export default function StreakStats({ logs }: StreakStatsProps) {
       {/* Stats Grid */}
       <div className="grid grid-cols-3 gap-4">
         {/* Longest Streak */}
-        <Card className="p-4 text-center hover:shadow-lg transition-shadow">
-          <div className="text-sm font-semibold text-gray-600 mb-1 uppercase">Trophy</div>
-          <div className="text-2xl font-bold text-gray-900">{longestStreak}</div>
-          <div className="text-xs text-gray-600 mt-1">Longest Streak</div>
+        <Card className="p-4 text-center hover:shadow-lg transition-shadow dark:hover:shadow-orange-500/10">
+          <div className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 uppercase">Trophy</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{longestStreak}</div>
+          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">Longest Streak</div>
           {longestStreak > currentStreak && longestStreak > 0 && (
-            <div className="text-xs text-orange-600 mt-1 font-medium">
+            <div className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
               Beat it!
             </div>
           )}
         </Card>
 
         {/* Active Days */}
-        <Card className="p-4 text-center hover:shadow-lg transition-shadow">
-          <div className="text-sm font-semibold text-gray-600 mb-1 uppercase">Calendar</div>
-          <div className="text-2xl font-bold text-gray-900">{activeDays}</div>
-          <div className="text-xs text-gray-600 mt-1">Active Days</div>
-          <div className="text-xs text-green-600 mt-1 font-medium">
+        <Card className="p-4 text-center hover:shadow-lg transition-shadow dark:hover:shadow-green-500/10">
+          <div className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 uppercase">Calendar</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{activeDays}</div>
+          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">Active Days</div>
+          <div className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
             {activePercentage}% of time
           </div>
         </Card>
 
         {/* Perfect Days */}
-        <Card className="p-4 text-center hover:shadow-lg transition-shadow">
-          <div className="text-sm font-semibold text-gray-600 mb-1 uppercase">Star</div>
-          <div className="text-2xl font-bold text-gray-900">
+        <Card className="p-4 text-center hover:shadow-lg transition-shadow dark:hover:shadow-purple-500/10">
+          <div className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 uppercase">Star</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {logs.filter((l) => l.isStreakDay).length}
           </div>
-          <div className="text-xs text-gray-600 mt-1">Perfect Days</div>
-          <div className="text-xs text-green-600 mt-1 font-medium">
+          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">Perfect Days</div>
+          <div className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
             All goals met
           </div>
         </Card>
@@ -127,12 +127,12 @@ export default function StreakStats({ logs }: StreakStatsProps) {
 
       {/* Motivational Messages */}
       {currentStreak === 0 && activeDays > 0 && (
-        <Card className="p-4 bg-yellow-50 border-yellow-200">
+        <Card className="p-4 bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800">
           <div className="flex items-start gap-3">
-            <div className="text-sm font-bold text-yellow-700">ALERT</div>
+            <div className="text-sm font-bold text-yellow-700 dark:text-yellow-400">ALERT</div>
             <div>
-              <div className="font-semibold text-gray-900">Your streak broke!</div>
-              <div className="text-sm text-gray-600 mt-1">
+              <div className="font-semibold text-gray-900 dark:text-gray-100">Your streak broke!</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Don't worry! You've been active {activeDays} days. Start a new streak today by
                 completing all 4 goals: water, calories, exercise, and weight tracking.
               </div>
@@ -142,12 +142,12 @@ export default function StreakStats({ logs }: StreakStatsProps) {
       )}
 
       {currentStreak >= 7 && currentStreak < 14 && (
-        <Card className="p-4 bg-green-50 border-green-200">
+        <Card className="p-4 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800">
           <div className="flex items-start gap-3">
-            <div className="text-sm font-bold text-green-700">MILESTONE</div>
+            <div className="text-sm font-bold text-green-700 dark:text-green-400">MILESTONE</div>
             <div>
-              <div className="font-semibold text-gray-900">7 Days! Habit forming!</div>
-              <div className="text-sm text-gray-600 mt-1">
+              <div className="font-semibold text-gray-900 dark:text-gray-100">7 Days! Habit forming!</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 You're building a solid habit. Research shows it takes 21 days to form a habit. Keep
                 going!
               </div>
@@ -157,12 +157,12 @@ export default function StreakStats({ logs }: StreakStatsProps) {
       )}
 
       {currentStreak >= 21 && currentStreak < 30 && (
-        <Card className="p-4 bg-purple-50 border-purple-200">
+        <Card className="p-4 bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800">
           <div className="flex items-start gap-3">
-            <div className="text-sm font-bold text-purple-700">MILESTONE</div>
+            <div className="text-sm font-bold text-purple-700 dark:text-purple-400">MILESTONE</div>
             <div>
-              <div className="font-semibold text-gray-900">21 Days! Habit Formed!</div>
-              <div className="text-sm text-gray-600 mt-1">
+              <div className="font-semibold text-gray-900 dark:text-gray-100">21 Days! Habit Formed!</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 You've officially built a habit! This is now part of your lifestyle. Amazing work!
               </div>
             </div>
@@ -171,12 +171,12 @@ export default function StreakStats({ logs }: StreakStatsProps) {
       )}
 
       {currentStreak >= 30 && (
-        <Card className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+        <Card className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-purple-200 dark:border-purple-800">
           <div className="flex items-start gap-3">
-            <div className="text-sm font-bold text-purple-700">ELITE</div>
+            <div className="text-sm font-bold text-purple-700 dark:text-purple-400">ELITE</div>
             <div>
-              <div className="font-semibold text-gray-900">30+ Days! You're Elite!</div>
-              <div className="text-sm text-gray-600 mt-1">
+              <div className="font-semibold text-gray-900 dark:text-gray-100">30+ Days! You're Elite!</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 You've achieved what most people only dream of. This level of consistency is truly
                 exceptional. You're an inspiration!
               </div>
@@ -186,26 +186,26 @@ export default function StreakStats({ logs }: StreakStatsProps) {
       )}
 
       {/* Goals Breakdown */}
-      <Card className="p-4">
-        <h4 className="font-semibold mb-3 text-gray-900">Daily Goals Checklist</h4>
+      <Card className="p-4 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700">
+        <h4 className="font-semibold mb-3 text-gray-900 dark:text-gray-100">Daily Goals Checklist</h4>
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-            <span className="text-gray-700">Drink 4L water</span>
+            <div className="w-4 h-4 rounded-full bg-blue-500 dark:bg-blue-400"></div>
+            <span className="text-gray-700 dark:text-gray-300">Drink 4L water</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-green-500"></div>
-            <span className="text-gray-700">Hit calorie target (±10%)</span>
+            <div className="w-4 h-4 rounded-full bg-green-500 dark:bg-green-400"></div>
+            <span className="text-gray-700 dark:text-gray-300">Hit calorie target (±10%)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-            <span className="text-gray-700">60+ minutes exercise</span>
+            <div className="w-4 h-4 rounded-full bg-orange-500 dark:bg-orange-400"></div>
+            <span className="text-gray-700 dark:text-gray-300">60+ minutes exercise</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-purple-500"></div>
-            <span className="text-gray-700">Log your weight</span>
+            <div className="w-4 h-4 rounded-full bg-purple-500 dark:bg-purple-400"></div>
+            <span className="text-gray-700 dark:text-gray-300">Log your weight</span>
           </div>
-          <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400">
             Complete all 4 goals to maintain your streak!
           </div>
         </div>

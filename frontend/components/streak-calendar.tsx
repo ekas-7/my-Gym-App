@@ -51,7 +51,7 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Activity Calendar</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Activity Calendar</h3>
         </div>
         <div className="text-center py-8 text-muted-foreground text-sm">
           Loading calendar...
@@ -73,30 +73,30 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Activity Calendar</h3>
-        <div className="flex items-center gap-4 text-xs text-gray-600">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-emerald-600"></div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Activity Calendar</h3>
+        <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-emerald-600 dark:border-emerald-500"></div>
             <span>100%</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full bg-amber-400 border-2 border-amber-500"></div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-amber-400 dark:bg-amber-500 border-2 border-amber-500 dark:border-amber-600"></div>
             <span>50-99%</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full bg-slate-400 border-2 border-slate-500"></div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-slate-400 dark:bg-slate-500 border-2 border-slate-500 dark:border-slate-600"></div>
             <span>&lt;50%</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full bg-slate-100 border-2 border-slate-200"></div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700"></div>
             <span>None</span>
           </div>
         </div>
       </div>
 
       {/* Day labels */}
-      <div className="grid grid-cols-7 gap-2 mb-2 text-xs text-gray-500 text-center font-medium">
+      <div className="grid grid-cols-7 gap-2 mb-2 text-xs text-gray-500 dark:text-gray-400 text-center font-medium">
         <div>Sun</div>
         <div>Mon</div>
         <div>Tue</div>
@@ -126,16 +126,16 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
                     className={`
                       w-full h-full rounded-full
                       ${isFuture 
-                        ? 'bg-slate-50 border-2 border-slate-200' 
+                        ? 'bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700' 
                         : completion === 100 
-                          ? 'bg-emerald-500 border-2 border-emerald-600'
+                          ? 'bg-emerald-500 dark:bg-emerald-400 border-2 border-emerald-600 dark:border-emerald-500'
                           : completion >= 50
-                            ? 'bg-amber-400 border-2 border-amber-500'
+                            ? 'bg-amber-400 dark:bg-amber-500 border-2 border-amber-500 dark:border-amber-600'
                             : completion > 0
-                              ? 'bg-slate-400 border-2 border-slate-500'
-                              : 'bg-slate-100 border-2 border-slate-200'
+                              ? 'bg-slate-400 dark:bg-slate-500 border-2 border-slate-500 dark:border-slate-600'
+                              : 'bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700'
                       }
-                      ${isToday ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
+                      ${isToday ? 'ring-2 ring-blue-500 dark:ring-blue-400 ring-offset-2 dark:ring-offset-slate-950' : ''}
                       flex items-center justify-center
                       transition-all duration-200 hover:scale-110
                       cursor-pointer
@@ -145,14 +145,14 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
                       className={`
                         text-[10px] font-bold
                         ${isFuture 
-                          ? 'text-slate-300' 
+                          ? 'text-slate-300 dark:text-slate-600' 
                           : completion === 100
-                            ? 'text-white'
+                            ? 'text-white dark:text-emerald-950'
                             : completion >= 50
-                              ? 'text-amber-900'
+                              ? 'text-amber-900 dark:text-amber-950'
                               : completion > 0
-                                ? 'text-white'
-                                : 'text-slate-400'
+                                ? 'text-white dark:text-slate-950'
+                                : 'text-slate-400 dark:text-slate-600'
                         }
                       `}
                     >
@@ -161,7 +161,7 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
                   </div>
 
                   {/* Date number - shown on hover */}
-                  <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none z-10">
+                  <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 dark:bg-slate-100 text-white dark:text-gray-900 text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none z-10">
                     {day.date.toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
@@ -180,7 +180,7 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
       </div>
 
       {/* Month markers */}
-      <div className="flex justify-between text-xs text-gray-500 mt-4 px-1">
+      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-4 px-1">
         {Array.from({ length: monthsToShow }).map((_, i) => {
           const monthDate = new Date();
           monthDate.setMonth(today.getMonth() - monthsToShow + 1 + i);
