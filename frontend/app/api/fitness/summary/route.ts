@@ -7,14 +7,19 @@ export async function GET(request: NextRequest) {
     await dbConnect();
 
     const searchParams = request.nextUrl.searchParams;
-    const period = searchParams.get('period') || 'day'; // day, month, year
+    const period = searchParams.get('period') || 'day'; // day, week, month, year
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     let startDate = new Date(today);
 
-    if (period === 'month') {
+    if (period === 'week') {
+      // Start from Monday of current week
+      const dayOfWeek = today.getDay();
+      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Adjust for Monday start
+      startDate.setDate(today.getDate() - diff);
+    } else if (period === 'month') {
       startDate.setDate(1); // First day of current month
     } else if (period === 'year') {
       startDate.setMonth(0, 1); // January 1st of current year

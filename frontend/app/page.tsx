@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { Droplet, Utensils, Dumbbell, TrendingUp, Target, Calendar as CalendarIcon } from "lucide-react";
+import { Droplet, Utensils, Dumbbell, TrendingUp, Target, Calendar as CalendarIcon, Heart } from "lucide-react";
+import { ExerciseItem } from "@/components/exercise-item";
+import { CardioItem } from "@/components/cardio-item";
+import { cardioExercises, weightTrainingCategories } from "@/lib/exercises";
 
 interface SummaryData {
   period: string;
@@ -29,7 +32,7 @@ export default function Home() {
 
   // Hydration state (in liters)
   const [waterIntake, setWaterIntake] = useState(0);
-  const dailyWaterGoal = 2.5; // 2.5 liters per day
+  const dailyWaterGoal = 4; // 4 liters per day
 
   // Diet state
   const [calories, setCalories] = useState(0);
@@ -40,13 +43,18 @@ export default function Home() {
   const exerciseGoal = 60;
 
   // Summary period state
-  const [summaryPeriod, setSummaryPeriod] = useState<'day' | 'month' | 'year'>('day');
+  const [summaryPeriod, setSummaryPeriod] = useState<'day' | 'week' | 'month' | 'year'>('day');
   
   // Summary data from MongoDB
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
   
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
+
+  // Exercise tracking state
+  const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
+  const [exerciseCategory, setExerciseCategory] = useState<'cardio' | 'weight-training'>('cardio');
+  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<'chest' | 'back' | 'shoulders'>('chest');
 
   // Fetch today's fitness data on mount
   useEffect(() => {
@@ -121,7 +129,7 @@ export default function Home() {
   };
 
   // Get summary data - use MongoDB data if available, otherwise use current day's data
-  const getSummaryData = (period: 'day' | 'month' | 'year') => {
+  const getSummaryData = (period: 'day' | 'week' | 'month' | 'year') => {
     if (summaryData && summaryData.period === period) {
       return summaryData;
     }
@@ -146,6 +154,18 @@ export default function Home() {
       },
       totalDays: 1,
     };
+  };
+
+  const toggleExercise = (exerciseId: string) => {
+    setCompletedExercises(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(exerciseId)) {
+        newSet.delete(exerciseId);
+      } else {
+        newSet.add(exerciseId);
+      }
+      return newSet;
+    });
   };
 
   return (
@@ -212,7 +232,7 @@ export default function Home() {
                       </Button>
                     </div>
                     <div className="grid grid-cols-4 gap-2">
-                      {Array.from({ length: 10 }).map((_, i) => {
+                      {Array.from({ length: 16 }).map((_, i) => {
                         const threshold = (i + 1) * 0.25; // Each box represents 250ml
                         return (
                           <div
@@ -309,9 +329,9 @@ export default function Home() {
                       <div>
                         <CardTitle className="flex items-center gap-2">
                           <Dumbbell className="h-5 w-5 text-purple-500" />
-                          Exercise Time
+                          Exercise Tracking
                         </CardTitle>
-                        <CardDescription>Log your daily workout sessions</CardDescription>
+                        <CardDescription>Choose your workout type and log exercises</CardDescription>
                       </div>
                       <Badge variant={exerciseMinutes >= exerciseGoal ? "default" : "secondary"}>
                         {exerciseMinutes} / {exerciseGoal} min
@@ -326,61 +346,104 @@ export default function Home() {
                       </div>
                       <Progress value={(exerciseMinutes / exerciseGoal) * 100} className="h-3" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button 
-                        onClick={() => addExercise(15)} 
-                        variant="outline" 
-                        className="h-auto py-4 flex flex-col items-start"
+
+                    {/* Category Selector */}
+                    <div className="flex gap-2">
+                      <Button
+                        variant={exerciseCategory === 'cardio' ? 'default' : 'outline'}
+                        onClick={() => setExerciseCategory('cardio')}
+                        className="flex-1"
                       >
-                        <span className="font-semibold">Running</span>
-                        <span className="text-xs text-muted-foreground">15 minutes</span>
+                        <Heart className="h-4 w-4 mr-2" />
+                        Cardio
                       </Button>
-                      <Button 
-                        onClick={() => addExercise(20)} 
-                        variant="outline" 
-                        className="h-auto py-4 flex flex-col items-start"
+                      <Button
+                        variant={exerciseCategory === 'weight-training' ? 'default' : 'outline'}
+                        onClick={() => setExerciseCategory('weight-training')}
+                        className="flex-1"
                       >
-                        <span className="font-semibold">Weights</span>
-                        <span className="text-xs text-muted-foreground">20 minutes</span>
-                      </Button>
-                      <Button 
-                        onClick={() => addExercise(10)} 
-                        variant="outline" 
-                        className="h-auto py-4 flex flex-col items-start"
-                      >
-                        <span className="font-semibold">Yoga</span>
-                        <span className="text-xs text-muted-foreground">10 minutes</span>
-                      </Button>
-                      <Button 
-                        onClick={() => addExercise(30)} 
-                        variant="outline" 
-                        className="h-auto py-4 flex flex-col items-start"
-                      >
-                        <span className="font-semibold">Cycling</span>
-                        <span className="text-xs text-muted-foreground">30 minutes</span>
-                      </Button>
-                      <Button 
-                        onClick={() => addExercise(15)} 
-                        variant="outline" 
-                        className="h-auto py-4 flex flex-col items-start"
-                      >
-                        <span className="font-semibold">Swimming</span>
-                        <span className="text-xs text-muted-foreground">15 minutes</span>
-                      </Button>
-                      <Button 
-                        onClick={() => addExercise(10)} 
-                        variant="outline" 
-                        className="h-auto py-4 flex flex-col items-start"
-                      >
-                        <span className="font-semibold">Stretching</span>
-                        <span className="text-xs text-muted-foreground">10 minutes</span>
+                        <Dumbbell className="h-4 w-4 mr-2" />
+                        Weight Training
                       </Button>
                     </div>
+
+                    {/* Cardio Exercises */}
+                    {exerciseCategory === 'cardio' && (
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-semibold">Cardio Exercises</h3>
+                        <div className="grid grid-cols-1 gap-2">
+                          {cardioExercises.map((exercise) => (
+                            <CardioItem
+                              key={exercise.id}
+                              name={exercise.name}
+                              duration={exercise.duration}
+                              isCompleted={completedExercises.has(exercise.id)}
+                              onToggle={() => {
+                                toggleExercise(exercise.id);
+                                if (!completedExercises.has(exercise.id)) {
+                                  addExercise(exercise.duration);
+                                }
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Weight Training Exercises */}
+                    {exerciseCategory === 'weight-training' && (
+                      <div className="space-y-3">
+                        {/* Muscle Group Selector */}
+                        <div className="flex gap-2">
+                          {weightTrainingCategories.map((category) => (
+                            <Button
+                              key={category.id}
+                              size="sm"
+                              variant={selectedMuscleGroup === category.id ? 'default' : 'outline'}
+                              onClick={() => setSelectedMuscleGroup(category.id)}
+                              className="flex-1"
+                            >
+                              <span className="mr-1">{category.icon}</span>
+                              {category.name}
+                            </Button>
+                          ))}
+                        </div>
+
+                        {/* Exercise List for Selected Muscle Group */}
+                        {weightTrainingCategories
+                          .filter(cat => cat.id === selectedMuscleGroup)
+                          .map((category) => (
+                            <div key={category.id} className="space-y-2">
+                              <h3 className="text-sm font-semibold">{category.name} Exercises</h3>
+                              <div className="grid grid-cols-1 gap-2">
+                                {category.exercises.map((exercise) => (
+                                  <ExerciseItem
+                                    key={exercise.id}
+                                    name={exercise.name}
+                                    reps={exercise.reps}
+                                    sets={exercise.sets}
+                                    isCompleted={completedExercises.has(exercise.id)}
+                                    onToggle={() => {
+                                      toggleExercise(exercise.id);
+                                      if (!completedExercises.has(exercise.id)) {
+                                        // Assume 2 minutes per set
+                                        addExercise(exercise.sets * 2);
+                                      }
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+
                     <Button variant="outline" onClick={() => {
                       setExerciseMinutes(0);
+                      setCompletedExercises(new Set());
                       updateFitnessData({ exerciseMinutes: 0 });
                     }} className="w-full">
-                      Reset Exercise
+                      Reset All Exercises
                     </Button>
                   </CardContent>
                 </Card>
@@ -395,13 +458,20 @@ export default function Home() {
                         <TrendingUp className="h-5 w-5 text-orange-500" />
                         Progress Summary
                       </CardTitle>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button
                           size="sm"
                           variant={summaryPeriod === 'day' ? 'default' : 'outline'}
                           onClick={() => setSummaryPeriod('day')}
                         >
                           Day
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={summaryPeriod === 'week' ? 'default' : 'outline'}
+                          onClick={() => setSummaryPeriod('week')}
+                        >
+                          Week
                         </Button>
                         <Button
                           size="sm"
@@ -420,7 +490,7 @@ export default function Home() {
                       </div>
                     </div>
                     <CardDescription>
-                      Your {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} fitness overview
+                      Your {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} fitness overview
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -501,7 +571,7 @@ export default function Home() {
                           )}%
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Overall {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} completion
+                          Overall {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} completion
                         </p>
                       </div>
                     </div>

@@ -1,5 +1,14 @@
 import mongoose, { Schema, Model } from 'mongoose';
 
+export interface IExerciseLog {
+  category: 'cardio' | 'weight-training';
+  subcategory?: 'chest' | 'back' | 'shoulders';
+  name: string;
+  reps?: number;
+  sets?: number;
+  duration?: number; // for cardio in minutes
+}
+
 export interface IFitnessLog {
   _id?: string;
   date: Date;
@@ -9,9 +18,38 @@ export interface IFitnessLog {
   calorieGoal: number;
   exerciseMinutes: number;
   exerciseGoal: number;
+  exercises: IExerciseLog[];
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+const ExerciseLogSchema = new Schema<IExerciseLog>({
+  category: {
+    type: String,
+    enum: ['cardio', 'weight-training'],
+    required: true,
+  },
+  subcategory: {
+    type: String,
+    enum: ['chest', 'back', 'shoulders'],
+  },
+  name: {
+    type: String,
+    required: true,
+  },
+  reps: {
+    type: Number,
+    min: 0,
+  },
+  sets: {
+    type: Number,
+    min: 0,
+  },
+  duration: {
+    type: Number,
+    min: 0,
+  },
+});
 
 const FitnessLogSchema = new Schema<IFitnessLog>(
   {
@@ -29,7 +67,7 @@ const FitnessLogSchema = new Schema<IFitnessLog>(
     waterGoal: {
       type: Number,
       required: true,
-      default: 2.5, // 2.5 liters per day
+      default: 4, // 4 liters per day
     },
     calories: {
       type: Number,
@@ -52,6 +90,10 @@ const FitnessLogSchema = new Schema<IFitnessLog>(
       type: Number,
       required: true,
       default: 60,
+    },
+    exercises: {
+      type: [ExerciseLogSchema],
+      default: [],
     },
   },
   {

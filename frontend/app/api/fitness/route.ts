@@ -23,7 +23,7 @@ export async function GET() {
       fitnessLog = await FitnessLog.create({
         date: today,
         waterLiters: 0,
-        waterGoal: 2.5,
+        waterGoal: 4,
         calories: 0,
         calorieGoal: 2000,
         exerciseMinutes: 0,
