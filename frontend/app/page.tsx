@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { Droplet, Utensils, Dumbbell, TrendingUp, Target, Calendar as CalendarIcon, Heart } from "lucide-react";
+import { Droplet, Utensils, Dumbbell, TrendingUp, Target, Calendar as CalendarIcon, Heart, Scale } from "lucide-react";
 import { ExerciseItem } from "@/components/exercise-item";
 import { CardioItem } from "@/components/cardio-item";
+import { BodyStats } from "@/components/body-stats";
 import { cardioExercises, weightTrainingCategories } from "@/lib/exercises";
 
 interface SummaryData {
@@ -18,6 +19,22 @@ interface SummaryData {
   calories: { consumed: number; goal: number; percentage: number };
   exercise: { minutes: number; goal: number; percentage: number };
   totalDays: number;
+}
+
+interface UserProfile {
+  currentWeight: number;
+  targetWeight: number;
+  bodyFatPercentage: number;
+  skeletalMuscle: number;
+  visceralFatIndex: number;
+  bmr: number;
+  activityLevel: string;
+  goalType: string;
+  weeklyWeightChangeGoal: number;
+  dailyCalorieTarget: number;
+  dailyProteinTarget: number;
+  waterGoal: number;
+  exerciseGoal: number;
 }
 
 export default function Home() {
@@ -32,15 +49,22 @@ export default function Home() {
 
   // Hydration state (in liters)
   const [waterIntake, setWaterIntake] = useState(0);
-  const dailyWaterGoal = 4; // 4 liters per day
+  const [dailyWaterGoal, setDailyWaterGoal] = useState(4); // Will be updated from profile
 
   // Diet state
   const [calories, setCalories] = useState(0);
-  const calorieGoal = 2000;
+  const [calorieGoal, setCalorieGoal] = useState(2000); // Will be updated from profile
 
   // Exercise state
   const [exerciseMinutes, setExerciseMinutes] = useState(0);
-  const exerciseGoal = 60;
+  const [exerciseGoal, setExerciseGoal] = useState(60); // Will be updated from profile
+
+  // User profile state
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  // Daily weight tracking
+  const [todayWeight, setTodayWeight] = useState<number | null>(null);
+  const [todayBodyFat, setTodayBodyFat] = useState<number | null>(null);
 
   // Summary period state
   const [summaryPeriod, setSummaryPeriod] = useState<'day' | 'week' | 'month' | 'year'>('day');
@@ -59,12 +83,29 @@ export default function Home() {
   // Fetch today's fitness data on mount
   useEffect(() => {
     fetchTodayData();
+    fetchUserProfile();
   }, []);
 
   // Fetch summary data when period changes
   useEffect(() => {
     fetchSummaryData();
   }, [summaryPeriod]);
+
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch('/api/profile');
+      const result = await response.json();
+      
+      if (result.success) {
+        setUserProfile(result.data);
+        setDailyWaterGoal(result.data.waterGoal);
+        setCalorieGoal(result.data.dailyCalorieTarget);
+        setExerciseGoal(result.data.exerciseGoal);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   const fetchTodayData = async () => {
     try {
@@ -75,6 +116,8 @@ export default function Home() {
         setWaterIntake(result.data.waterLiters);
         setCalories(result.data.calories);
         setExerciseMinutes(result.data.exerciseMinutes);
+        setTodayWeight(result.data.weight || null);
+        setTodayBodyFat(result.data.bodyFatPercentage || null);
       }
     } catch (error) {
       console.error('Error fetching today\'s data:', error);
@@ -96,7 +139,7 @@ export default function Home() {
     }
   };
 
-  const updateFitnessData = async (data: { waterLiters?: number; calories?: number; exerciseMinutes?: number }) => {
+  const updateFitnessData = async (data: { waterLiters?: number; calories?: number; exerciseMinutes?: number; weight?: number; bodyFatPercentage?: number }) => {
     try {
       await fetch('/api/fitness', {
         method: 'PUT',
@@ -105,6 +148,16 @@ export default function Home() {
       });
       // Refresh summary after update
       fetchSummaryData();
+      
+      // Update profile if weight changed
+      if (data.weight && userProfile) {
+        await fetch('/api/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentWeight: data.weight }),
+        });
+        fetchUserProfile();
+      }
     } catch (error) {
       console.error('Error updating fitness data:', error);
     }
@@ -187,10 +240,11 @@ export default function Home() {
           {/* Main Content - Tabs */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="hydration" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="hydration">Hydration</TabsTrigger>
                 <TabsTrigger value="diet">Diet</TabsTrigger>
                 <TabsTrigger value="exercise">Exercise</TabsTrigger>
+                <TabsTrigger value="weight">Weight</TabsTrigger>
                 <TabsTrigger value="summary">Summary</TabsTrigger>
               </TabsList>
 
@@ -447,6 +501,111 @@ export default function Home() {
                     </Button>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* Weight Tracking Tab */}
+              <TabsContent value="weight" className="space-y-4">
+                {userProfile ? (
+                  <>
+                    <BodyStats
+                      currentWeight={userProfile.currentWeight}
+                      targetWeight={userProfile.targetWeight}
+                      bodyFatPercentage={userProfile.bodyFatPercentage}
+                      skeletalMuscle={userProfile.skeletalMuscle}
+                      visceralFatIndex={userProfile.visceralFatIndex}
+                      bmr={userProfile.bmr}
+                      dailyCalorieTarget={userProfile.dailyCalorieTarget}
+                      dailyProteinTarget={userProfile.dailyProteinTarget}
+                      goalType={userProfile.goalType}
+                    />
+                    
+                    {/* Daily Weight Log */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Scale className="h-5 w-5 text-purple-500" />
+                          Today's Measurements
+                        </CardTitle>
+                        <CardDescription>Log your weight and body fat for today</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Weight (kg)</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={todayWeight || ''}
+                                onChange={(e) => setTodayWeight(parseFloat(e.target.value) || null)}
+                                placeholder={userProfile.currentWeight.toString()}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              />
+                            </div>
+                            {todayWeight && (
+                              <div className="text-xs text-muted-foreground">
+                                {todayWeight > userProfile.currentWeight 
+                                  ? `+${(todayWeight - userProfile.currentWeight).toFixed(1)} kg` 
+                                  : `${(todayWeight - userProfile.currentWeight).toFixed(1)} kg`}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Body Fat (%)</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={todayBodyFat || ''}
+                                onChange={(e) => setTodayBodyFat(parseFloat(e.target.value) || null)}
+                                placeholder={userProfile.bodyFatPercentage.toString()}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              />
+                            </div>
+                            {todayBodyFat && (
+                              <div className="text-xs text-muted-foreground">
+                                {todayBodyFat > userProfile.bodyFatPercentage 
+                                  ? `+${(todayBodyFat - userProfile.bodyFatPercentage).toFixed(1)}%` 
+                                  : `${(todayBodyFat - userProfile.bodyFatPercentage).toFixed(1)}%`}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <Button 
+                          onClick={() => {
+                            if (todayWeight) {
+                              updateFitnessData({ 
+                                weight: todayWeight, 
+                                bodyFatPercentage: todayBodyFat || undefined 
+                              });
+                            }
+                          }}
+                          disabled={!todayWeight}
+                          className="w-full"
+                        >
+                          Save Today's Measurements
+                        </Button>
+
+                        {todayWeight && (
+                          <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                            <div className="text-sm font-semibold text-green-600">Progress Saved! ✅</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Your weight log has been updated and profile synced.
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </>
+                ) : (
+                  <Card>
+                    <CardContent className="py-8 text-center">
+                      <div className="text-muted-foreground">Loading profile...</div>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* Summary Tab */}

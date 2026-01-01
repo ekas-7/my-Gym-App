@@ -19,6 +19,9 @@ export interface IFitnessLog {
   exerciseMinutes: number;
   exerciseGoal: number;
   exercises: IExerciseLog[];
+  // Weight tracking
+  weight?: number; // Current weight in kg
+  bodyFatPercentage?: number; // Body fat %
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -94,6 +97,15 @@ const FitnessLogSchema = new Schema<IFitnessLog>(
     exercises: {
       type: [ExerciseLogSchema],
       default: [],
+    },
+    weight: {
+      type: Number,
+      min: 0,
+    },
+    bodyFatPercentage: {
+      type: Number,
+      min: 0,
+      max: 100,
     },
   },
   {
