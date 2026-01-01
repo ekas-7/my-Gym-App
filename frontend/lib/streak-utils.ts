@@ -2,7 +2,7 @@ import { IFitnessLog } from '@/models/FitnessLog';
 
 /**
  * Calculate how many goals were completed for a given day
- * Goals: Water (>=goal), Calories (>=goal), Exercise (>=goal), Weight (logged)
+ * Goals: Water (>=goal), Calories (>=goal), Exercise (>=goal)
  */
 export function calculateGoalsCompleted(log: IFitnessLog): {
   goalsCompleted: number;
@@ -10,7 +10,7 @@ export function calculateGoalsCompleted(log: IFitnessLog): {
   isStreakDay: boolean;
 } {
   let completed = 0;
-  const total = 4; // water, calories, exercise, weight
+  const total = 3; // water, calories, exercise
 
   // Goal 1: Water intake met
   if (log.waterLiters >= log.waterGoal) {
@@ -28,11 +28,6 @@ export function calculateGoalsCompleted(log: IFitnessLog): {
 
   // Goal 3: Exercise minutes met
   if (log.exerciseMinutes >= log.exerciseGoal) {
-    completed++;
-  }
-
-  // Goal 4: Weight logged for the day
-  if (log.weight !== undefined && log.weight > 0) {
     completed++;
   }
 

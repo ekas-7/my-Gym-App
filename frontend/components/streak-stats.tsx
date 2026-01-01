@@ -201,12 +201,9 @@ export default function StreakStats({ logs }: StreakStatsProps) {
             <div className="w-4 h-4 rounded-full bg-orange-500 dark:bg-orange-400"></div>
             <span className="text-gray-700 dark:text-gray-300">60+ minutes exercise</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-purple-500 dark:bg-purple-400"></div>
-            <span className="text-gray-700 dark:text-gray-300">Log your weight</span>
-          </div>
+          
           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400">
-            Complete all 4 goals to maintain your streak!
+            Complete all 3 goals to maintain your streak!
           </div>
         </div>
       </Card>

@@ -298,7 +298,7 @@ export default function Home() {
         exercises: [],
         date: new Date(),
         goalsCompleted: 0,
-        totalGoals: 4,
+        totalGoals: 3,
         isStreakDay: false,
       };
       
@@ -1173,7 +1173,7 @@ export default function Home() {
                       Your Streak
                     </CardTitle>
                     <CardDescription>
-                      Complete all 4 daily goals to maintain your streak
+                      Complete all 3 daily goals to maintain your streak
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
