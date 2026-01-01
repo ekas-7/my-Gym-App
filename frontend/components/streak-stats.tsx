@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { IFitnessLog } from '@/models/FitnessLog';
 import {
   calculateCurrentStreak,
@@ -15,6 +15,20 @@ interface StreakStatsProps {
 }
 
 export default function StreakStats({ logs }: StreakStatsProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <div className="text-center py-8 text-muted-foreground text-sm">
+        Loading stats...
+      </div>
+    );
+  }
+
   const currentStreak = calculateCurrentStreak(logs);
   const longestStreak = calculateLongestStreak(logs);
   const activeDays = calculateActiveDays(logs);

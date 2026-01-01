@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { IFitnessLog } from '@/models/FitnessLog';
 import { formatDateKey, getCompletionPercentage, getStreakColor } from '@/lib/streak-utils';
 
@@ -10,6 +10,12 @@ interface StreakCalendarProps {
 }
 
 export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalendarProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Create a map of date -> log for quick lookup
   const logMap = new Map<string, IFitnessLog>();
   logs.forEach((log) => {
@@ -41,6 +47,19 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
     return days;
   };
 
+  if (!isMounted) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Activity Calendar</h3>
+        </div>
+        <div className="text-center py-8 text-muted-foreground text-sm">
+          Loading calendar...
+        </div>
+      </div>
+    );
+  }
+
   const calendarDays = generateCalendarDays();
 
   // Group days by week
@@ -55,22 +74,22 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Activity Calendar</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Activity Calendar</h3>
         <div className="flex items-center gap-4 text-xs text-gray-600">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-emerald-600"></div>
             <span>100%</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+            <div className="w-3 h-3 rounded-full bg-amber-400 border-2 border-amber-500"></div>
             <span>50-99%</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+            <div className="w-3 h-3 rounded-full bg-slate-400 border-2 border-slate-500"></div>
             <span>&lt;50%</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full bg-gray-200"></div>
+            <div className="w-3 h-3 rounded-full bg-slate-100 border-2 border-slate-200"></div>
             <span>None</span>
           </div>
         </div>
@@ -105,9 +124,17 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
                 >
                   <div
                     className={`
-                      w-full h-full rounded-full border-2 
-                      ${isFuture ? 'bg-gray-100 border-gray-200' : colors.bg}
-                      ${isFuture ? 'border-gray-200' : colors.border}
+                      w-full h-full rounded-full
+                      ${isFuture 
+                        ? 'bg-slate-50 border-2 border-slate-200' 
+                        : completion === 100 
+                          ? 'bg-emerald-500 border-2 border-emerald-600'
+                          : completion >= 50
+                            ? 'bg-amber-400 border-2 border-amber-500'
+                            : completion > 0
+                              ? 'bg-slate-400 border-2 border-slate-500'
+                              : 'bg-slate-100 border-2 border-slate-200'
+                      }
                       ${isToday ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
                       flex items-center justify-center
                       transition-all duration-200 hover:scale-110
@@ -116,11 +143,20 @@ export default function StreakCalendar({ logs, monthsToShow = 3 }: StreakCalenda
                   >
                     <span
                       className={`
-                        text-xs font-bold
-                        ${isFuture ? 'text-gray-400' : colors.text}
+                        text-[10px] font-bold
+                        ${isFuture 
+                          ? 'text-slate-300' 
+                          : completion === 100
+                            ? 'text-white'
+                            : completion >= 50
+                              ? 'text-amber-900'
+                              : completion > 0
+                                ? 'text-white'
+                                : 'text-slate-400'
+                        }
                       `}
                     >
-                      {isFuture ? '' : completion > 0 ? `${completion}%` : ''}
+                      {!isFuture && completion > 0 ? `${completion}%` : ''}
                     </span>
                   </div>
 
