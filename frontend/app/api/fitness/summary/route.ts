@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         percentage: 0,
       },
       exercise: {
-        minutes: 0,
+        calories: 0,
         goal: 0,
         percentage: 0,
       },
@@ -67,13 +67,13 @@ export async function GET(request: NextRequest) {
       logs.forEach((log) => {
         summary.water.consumed += log.waterLiters || 0;
         summary.calories.consumed += log.calories || 0;
-        summary.exercise.minutes += log.exerciseMinutes || 0;
+        summary.exercise.calories += log.exerciseCalories || 0;
       });
 
       // Calculate average daily goal from all logs
       const avgWaterGoal = logs.reduce((sum, log) => sum + (log.waterGoal || 4), 0) / logs.length;
       const avgCalorieGoal = logs.reduce((sum, log) => sum + (log.calorieGoal || 2000), 0) / logs.length;
-      const avgExerciseGoal = logs.reduce((sum, log) => sum + (log.exerciseGoal || 60), 0) / logs.length;
+      const avgExerciseGoal = logs.reduce((sum, log) => sum + (log.exerciseGoal || 500), 0) / logs.length;
       
       // For display: show average daily goal (this is what user expects to see)
       summary.water.goal = avgWaterGoal;
@@ -87,12 +87,12 @@ export async function GET(request: NextRequest) {
       
       summary.water.percentage = Math.round((summary.water.consumed / totalExpectedWater) * 100) || 0;
       summary.calories.percentage = Math.round((summary.calories.consumed / totalExpectedCalories) * 100) || 0;
-      summary.exercise.percentage = Math.round((summary.exercise.minutes / totalExpectedExercise) * 100) || 0;
+      summary.exercise.percentage = Math.round((summary.exercise.calories / totalExpectedExercise) * 100) || 0;
     } else {
       // No logs found - use defaults
       summary.water.goal = 4;
       summary.calories.goal = 2000;
-      summary.exercise.goal = 60;
+      summary.exercise.goal = 500;
     }
 
     return NextResponse.json({ success: true, data: summary });

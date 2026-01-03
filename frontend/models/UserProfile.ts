@@ -21,7 +21,7 @@ export interface IUserProfile {
   
   // Preferences
   waterGoal: number; // liters
-  exerciseGoal: number; // minutes
+  exerciseGoal: number; // calories burned per day
   
   createdAt?: Date;
   updatedAt?: Date;
@@ -95,7 +95,7 @@ const UserProfileSchema = new Schema<IUserProfile>(
     exerciseGoal: {
       type: Number,
       required: true,
-      default: 60,
+      default: 500, // calories burned per day
     },
   },
   {

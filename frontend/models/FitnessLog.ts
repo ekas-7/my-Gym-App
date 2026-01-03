@@ -23,7 +23,7 @@ export interface IFitnessLog {
   fatsGoal: number; // Target fats
   protein: number; // Protein in grams
   proteinGoal: number; // Target protein (from user profile)
-  exerciseMinutes: number;
+  exerciseCalories: number;
   exerciseGoal: number;
   exercises: IExerciseLog[];
   // Weight tracking
@@ -127,7 +127,7 @@ const FitnessLogSchema = new Schema<IFitnessLog>(
       required: true,
       default: 190, // grams per day
     },
-    exerciseMinutes: {
+    exerciseCalories: {
       type: Number,
       required: true,
       default: 0,
@@ -136,7 +136,7 @@ const FitnessLogSchema = new Schema<IFitnessLog>(
     exerciseGoal: {
       type: Number,
       required: true,
-      default: 60,
+      default: 500, // calories burned per day
     },
     exercises: {
       type: [ExerciseLogSchema],

@@ -25,8 +25,8 @@ function calculateGoalsCompleted(log: IFitnessLog): {
     completed++;
   }
 
-  // Goal 3: Exercise minutes met
-  if (log.exerciseMinutes >= log.exerciseGoal) {
+  // Goal 3: Exercise calories burned met
+  if (log.exerciseCalories >= log.exerciseGoal) {
     completed++;
   }
 
@@ -64,8 +64,8 @@ export async function GET() {
         waterGoal: 4,
         calories: 0,
         calorieGoal: 2000,
-        exerciseMinutes: 0,
-        exerciseGoal: 60,
+        exerciseCalories: 0,
+        exerciseGoal: 500,
       });
     }
 
@@ -124,8 +124,8 @@ export async function PUT(request: NextRequest) {
         waterGoal: 4,
         calories: 0,
         calorieGoal: 2000,
-        exerciseMinutes: 0,
-        exerciseGoal: 60,
+        exerciseCalories: 0,
+        exerciseGoal: 500,
       });
     }
 
@@ -141,7 +141,7 @@ export async function PUT(request: NextRequest) {
       fatsGoal: body.fatsGoal ?? currentLog.fatsGoal,
       protein: body.protein ?? currentLog.protein,
       proteinGoal: body.proteinGoal ?? currentLog.proteinGoal,
-      exerciseMinutes: body.exerciseMinutes ?? currentLog.exerciseMinutes,
+      exerciseCalories: body.exerciseCalories ?? currentLog.exerciseCalories,
       exerciseGoal: body.exerciseGoal ?? currentLog.exerciseGoal,
       exercises: body.exercises ?? currentLog.exercises,
       weight: body.weight ?? currentLog.weight,

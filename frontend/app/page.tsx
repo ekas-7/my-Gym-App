@@ -28,7 +28,7 @@ interface SummaryData {
   period: string;
   water: { consumed: number; goal: number; percentage: number };
   calories: { consumed: number; goal: number; percentage: number };
-  exercise: { minutes: number; goal: number; percentage: number };
+  exercise: { calories: number; goal: number; percentage: number };
   totalDays: number;
 }
 
@@ -89,8 +89,8 @@ export default function Home() {
   const [meals, setMeals] = useState<IMeal[]>([]);
 
   // Exercise state
-  const [exerciseMinutes, setExerciseMinutes] = useState(0);
-  const [exerciseGoal, setExerciseGoal] = useState(60); // Will be updated from profile
+  const [exerciseCalories, setExerciseCalories] = useState(0);
+  const [exerciseGoal, setExerciseGoal] = useState(500); // Will be updated from profile
   const [exerciseDescription, setExerciseDescription] = useState('');
   const [isAnalyzingExercise, setIsAnalyzingExercise] = useState(false);
   const [exerciseAnalysisError, setExerciseAnalysisError] = useState('');
@@ -251,7 +251,7 @@ export default function Home() {
         setCarbs(result.data.carbs || 0);
         setFats(result.data.fats || 0);
         setProtein(result.data.protein || 0);
-        setExerciseMinutes(result.data.exerciseMinutes);
+        setExerciseCalories(result.data.exerciseCalories);
         setTodayWeight(result.data.weight || null);
         setTodayBodyFat(result.data.bodyFatPercentage || null);
       }
@@ -319,19 +319,13 @@ export default function Home() {
       const result = await response.json();
       if (result.success) {
         setExercises(result.data);
-        // Calculate total minutes from exercises
-        const totalMinutes = result.data.reduce((sum: number, ex: IExercise) => {
-          if (ex.duration) {
-            return sum + ex.duration;
-          } else if (ex.sets && ex.sets.length > 0) {
-            // Assume 2 minutes per set for weight training
-            return sum + (ex.sets.length * 2);
-          }
-          return sum;
+        // Calculate total calories from exercises
+        const totalCalories = result.data.reduce((sum: number, ex: IExercise) => {
+          return sum + (ex.caloriesBurned || 0);
         }, 0);
-        setExerciseMinutes(totalMinutes);
+        setExerciseCalories(totalCalories);
         // Also update the fitness log
-        updateFitnessData({ exerciseMinutes: totalMinutes });
+        updateFitnessData({ exerciseCalories: totalCalories });
       }
     } catch (error) {
       console.error('Error fetching exercises:', error);
@@ -370,7 +364,7 @@ export default function Home() {
     carbs?: number;
     fats?: number;
     protein?: number;
-    exerciseMinutes?: number; 
+    exerciseCalories?: number; 
     weight?: number; 
     bodyFatPercentage?: number;
   }) => {
@@ -555,13 +549,12 @@ export default function Home() {
         const exerciseResult = await exerciseResponse.json();
         
         if (exerciseResult.success) {
-          // Update exercise minutes
-          const minutesToAdd = exerciseData.duration || (exerciseData.sets ? exerciseData.sets * 2 : 0);
-          const newExerciseMinutes = exerciseMinutes + minutesToAdd;
-          setExerciseMinutes(newExerciseMinutes);
+          // Update exercise calories (calories are now coming from the AI analysis)
+          const newExerciseCalories = exerciseCalories + (exerciseData.caloriesBurned || 0);
+          setExerciseCalories(newExerciseCalories);
 
           // Update FitnessLog for streak tracking
-          updateFitnessData({ exerciseMinutes: newExerciseMinutes });
+          updateFitnessData({ exerciseCalories: newExerciseCalories });
 
           // Refresh exercise history
           fetchExercises();
@@ -578,12 +571,6 @@ export default function Home() {
     } finally {
       setIsAnalyzingExercise(false);
     }
-  };
-
-  const addExercise = (minutes: number) => {
-    const newValue = Math.min(exerciseMinutes + minutes, exerciseGoal);
-    setExerciseMinutes(newValue);
-    updateFitnessData({ exerciseMinutes: newValue });
   };
 
   // Get summary data - use MongoDB data if available, otherwise use current day's data
@@ -606,9 +593,9 @@ export default function Home() {
         percentage: Math.round((calories / calorieGoal) * 100),
       },
       exercise: {
-        minutes: exerciseMinutes,
+        calories: exerciseCalories,
         goal: exerciseGoal,
-        percentage: Math.round((exerciseMinutes / exerciseGoal) * 100),
+        percentage: Math.round((exerciseCalories / exerciseGoal) * 100),
       },
       totalDays: 1,
     };
@@ -977,8 +964,8 @@ export default function Home() {
                         <CardDescription>AI-powered exercise logging or choose from presets</CardDescription>
                       </div>
                       {isMounted && !isLoading && (
-                        <Badge variant={exerciseMinutes >= exerciseGoal ? "default" : "secondary"}>
-                          {exerciseMinutes} / {exerciseGoal} min
+                        <Badge variant={exerciseCalories >= exerciseGoal ? "default" : "secondary"}>
+                          {exerciseCalories} / {exerciseGoal} cal
                         </Badge>
                       )}
                     </div>
@@ -993,9 +980,9 @@ export default function Home() {
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Progress</span>
-                            <span className="font-medium">{Math.round((exerciseMinutes / exerciseGoal) * 100)}%</span>
+                            <span className="font-medium">{Math.round((exerciseCalories / exerciseGoal) * 100)}%</span>
                           </div>
-                          <Progress value={(exerciseMinutes / exerciseGoal) * 100} className="h-3" />
+                          <Progress value={(exerciseCalories / exerciseGoal) * 100} className="h-3" />
                         </div>
 
                         {/* AI Exercise Input */}
@@ -1149,9 +1136,9 @@ export default function Home() {
                         )}
 
                         <Button variant="outline" onClick={() => {
-                          setExerciseMinutes(0);
+                          setExerciseCalories(0);
                           setCompletedExercises(new Set());
-                          updateFitnessData({ exerciseMinutes: 0 });
+                          updateFitnessData({ exerciseCalories: 0 });
                         }} className="w-full">
                           Reset Daily Progress
                         </Button>
@@ -1426,7 +1413,7 @@ export default function Home() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <Dumbbell className="h-5 w-5 text-purple-500" />
-                              <h3 className="font-semibold">Exercise Time</h3>
+                              <h3 className="font-semibold">Exercise Calories</h3>
                             </div>
                             <Badge variant={getSummaryData(summaryPeriod).exercise.percentage >= 100 ? "default" : "secondary"}>
                               {getSummaryData(summaryPeriod).exercise.percentage}%
@@ -1434,9 +1421,9 @@ export default function Home() {
                           </div>
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Completed</span>
+                              <span className="text-muted-foreground">Burned</span>
                               <span className="font-medium">
-                                {getSummaryData(summaryPeriod).exercise.minutes.toLocaleString()} / {Math.round(getSummaryData(summaryPeriod).exercise.goal * getSummaryData(summaryPeriod).totalDays).toLocaleString()} min
+                                {getSummaryData(summaryPeriod).exercise.calories.toLocaleString()} / {Math.round(getSummaryData(summaryPeriod).exercise.goal * getSummaryData(summaryPeriod).totalDays).toLocaleString()} cal
                               </span>
                             </div>
                             <Progress value={getSummaryData(summaryPeriod).exercise.percentage} className="h-2" />
@@ -1475,9 +1462,9 @@ export default function Home() {
                           </div>
                           <div className="text-center space-y-1 p-3 bg-purple-500/10 rounded-lg">
                             <div className="text-xl sm:text-2xl font-bold text-purple-500">
-                              {getSummaryData(summaryPeriod).exercise.minutes}
+                              {getSummaryData(summaryPeriod).exercise.calories}
                             </div>
-                            <div className="text-xs text-muted-foreground">Minutes</div>
+                            <div className="text-xs text-muted-foreground">Calories Burned</div>
                           </div>
                         </div>
 
@@ -1696,7 +1683,7 @@ export default function Home() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Exercise</span>
-                  <span className="text-sm font-medium">{exerciseGoal} min</span>
+                  <span className="text-sm font-medium">{exerciseGoal} cal</span>
                 </div>
               </CardContent>
             </Card>
@@ -1717,7 +1704,7 @@ export default function Home() {
                   <div className="text-center">
                     <div className="text-3xl font-bold mb-2">
                       {Math.round(
-                        ((waterIntake / dailyWaterGoal + calories / calorieGoal + exerciseMinutes / exerciseGoal) / 3) * 100
+                        ((waterIntake / dailyWaterGoal + calories / calorieGoal + exerciseCalories / exerciseGoal) / 3) * 100
                       )}%
                     </div>
                     <p className="text-xs text-muted-foreground">
