@@ -26,8 +26,8 @@ export function calculateGoalsCompleted(log: IFitnessLog): {
     completed++;
   }
 
-  // Goal 3: Exercise minutes met
-  if (log.exerciseMinutes >= log.exerciseGoal) {
+  // Goal 3: Exercise calories burned met
+  if (log.exerciseCalories >= log.exerciseGoal) {
     completed++;
   }
 

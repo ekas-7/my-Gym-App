@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
           waterGoal: log.waterGoal,
           calories: log.calories,
           calorieGoal: log.calorieGoal,
-          exerciseMinutes: log.exerciseMinutes,
+          exerciseCalories: log.exerciseCalories,
           exerciseGoal: log.exerciseGoal,
           weight: log.weight,
         })),

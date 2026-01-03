@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       waterGoal: 0,
       caloriesConsumed: 0,
       calorieGoal: 0,
-      exerciseMinutes: 0,
+      exerciseCalories: 0,
       exerciseGoal: 0,
       carbs: 0,
       fats: 0,
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       totals.waterGoal += log.waterGoal || 0;
       totals.caloriesConsumed += log.calories || 0;
       totals.calorieGoal += log.calorieGoal || 0;
-      totals.exerciseMinutes += log.exerciseMinutes || 0;
+      totals.exerciseCalories += log.exerciseCalories || 0;
       totals.exerciseGoal += log.exerciseGoal || 0;
       totals.carbs += log.carbs || 0;
       totals.fats += log.fats || 0;
@@ -101,13 +101,13 @@ export async function GET(request: NextRequest) {
       csv += `Total Protein (g),${Math.round(totals.protein)}\n\n`;
       
       csv += `EXERCISE\n`;
-      csv += `Total Minutes,${totals.exerciseMinutes}\n`;
-      csv += `Daily Average (min),${Math.round(totals.exerciseMinutes / Math.max(logs.length, 1))}\n`;
-      csv += `Goal Completion %,${Math.round((totals.exerciseMinutes / Math.max(totals.exerciseGoal, 1)) * 100)}\n\n`;
+      csv += `Total Calories,${totals.exerciseCalories}\n`;
+      csv += `Daily Average (cal),${Math.round(totals.exerciseCalories / Math.max(logs.length, 1))}\n`;
+      csv += `Goal Completion %,${Math.round((totals.exerciseCalories / Math.max(totals.exerciseGoal, 1)) * 100)}\n\n`;
 
       // Daily breakdown
       csv += `\nDAILY BREAKDOWN\n`;
-      csv += `Date,Water (L),Calories,Carbs (g),Fats (g),Protein (g),Exercise (min),Streak Day\n`;
+      csv += `Date,Water (L),Calories,Carbs (g),Fats (g),Protein (g),Exercise (cal),Streak Day\n`;
       logs.forEach((log) => {
         csv += `${new Date(log.date).toLocaleDateString()},`;
         csv += `${(log.waterLiters || 0).toFixed(2)},`;
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
         csv += `${Math.round(log.carbs || 0)},`;
         csv += `${Math.round(log.fats || 0)},`;
         csv += `${Math.round(log.protein || 0)},`;
-        csv += `${log.exerciseMinutes || 0},`;
+        csv += `${log.exerciseCalories || 0},`;
         csv += `${log.isStreakDay ? 'Yes' : 'No'}\n`;
       });
 
@@ -182,9 +182,9 @@ export async function GET(request: NextRequest) {
           totalProtein: Math.round(totals.protein),
         },
         exercise: {
-          totalMinutes: totals.exerciseMinutes,
-          dailyAverage: Math.round(totals.exerciseMinutes / Math.max(logs.length, 1)),
-          goalCompletion: Math.round((totals.exerciseMinutes / Math.max(totals.exerciseGoal, 1)) * 100),
+          totalCalories: totals.exerciseCalories,
+          dailyAverage: Math.round(totals.exerciseCalories / Math.max(logs.length, 1)),
+          goalCompletion: Math.round((totals.exerciseCalories / Math.max(totals.exerciseGoal, 1)) * 100),
         },
       },
       dailyLogs: logs.map((log) => ({
@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
         carbs: Math.round(log.carbs || 0),
         fats: Math.round(log.fats || 0),
         protein: Math.round(log.protein || 0),
-        exercise: log.exerciseMinutes || 0,
+        exercise: log.exerciseCalories || 0,
         isStreakDay: log.isStreakDay || false,
       })),
       meals: meals.map((meal) => ({

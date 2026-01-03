@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         daysMetGoal: 0,
       },
       exercise: {
-        totalMinutes: 0,
+        totalCalories: 0,
         totalGoal: 0,
         avgDaily: 0,
         daysMetGoal: 0,
@@ -119,9 +119,9 @@ export async function GET(request: NextRequest) {
         summary.calories.daysMetGoal++;
       }
 
-      summary.exercise.totalMinutes += log.exerciseMinutes || 0;
+      summary.exercise.totalCalories += log.exerciseCalories || 0;
       summary.exercise.totalGoal += log.exerciseGoal || 0;
-      if ((log.exerciseMinutes || 0) >= (log.exerciseGoal || 1)) {
+      if ((log.exerciseCalories || 0) >= (log.exerciseGoal || 1)) {
         summary.exercise.daysMetGoal++;
       }
 
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
     if (logs.length > 0) {
       summary.water.avgDaily = summary.water.totalConsumed / logs.length;
       summary.calories.avgDaily = summary.calories.totalConsumed / logs.length;
-      summary.exercise.avgDaily = summary.exercise.totalMinutes / logs.length;
+      summary.exercise.avgDaily = summary.exercise.totalCalories / logs.length;
       summary.macros.avgCarbs = summary.macros.totalCarbs / logs.length;
       summary.macros.avgFats = summary.macros.totalFats / logs.length;
       summary.macros.avgProtein = summary.macros.totalProtein / logs.length;
@@ -185,8 +185,8 @@ NUTRITION:
 - Meals Logged: Breakfast(${summary.mealBreakdown.breakfast}), Lunch(${summary.mealBreakdown.lunch}), Dinner(${summary.mealBreakdown.dinner}), Snacks(${summary.mealBreakdown.snack})
 
 EXERCISE:
-- Total Minutes: ${summary.exercise.totalMinutes} min
-- Daily Average: ${Math.round(summary.exercise.avgDaily)} min
+- Total Calories Burned: ${summary.exercise.totalCalories} cal
+- Daily Average: ${Math.round(summary.exercise.avgDaily)} cal
 - Days Met Goal: ${summary.exercise.daysMetGoal}/${summary.totalDays}
 - Cardio Sessions: ${summary.exerciseBreakdown.cardio}
 - Weight Training Sessions: ${summary.exerciseBreakdown.weightTraining}
@@ -221,7 +221,7 @@ Please provide your analysis in the following JSON format ONLY, no additional te
         areasToImprove: ['Keep logging your meals and exercises for better insights.'],
         hydrationInsight: `You've consumed ${summary.water.totalConsumed.toFixed(1)}L of water ${periodLabel}.`,
         nutritionInsight: `Your average daily calorie intake is ${Math.round(summary.calories.avgDaily)} kcal.`,
-        exerciseInsight: `You've exercised for a total of ${summary.exercise.totalMinutes} minutes ${periodLabel}.`,
+        exerciseInsight: `You've burned a total of ${summary.exercise.totalCalories} calories ${periodLabel}.`,
         weeklyTip: 'Stay consistent with your goals and track daily for best results.',
         motivationalMessage: 'Keep up the great work on your fitness journey!',
       };
