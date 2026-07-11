@@ -4,7 +4,8 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { IconTrash, IconSparkle } from '@/components/icons';
+import { IconSparkle } from '@/components/icons';
+import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { IMeal } from '@/models/Meal';
 
 interface MealHistoryProps {
@@ -56,66 +57,59 @@ export function MealHistory({ meals, onDelete }: MealHistoryProps) {
 
         <div className="space-y-2">
           {meals.map((meal) => (
-            <Card key={meal.id} className="p-3">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge className={mealTypeColors[meal.mealType]}>
-                      {mealTypeIcons[meal.mealType]} {meal.mealType}
+            <SwipeToDelete
+              key={meal.id}
+              onDelete={() => meal.id && onDelete(meal.id)}
+              deleteLabel={`Delete ${meal.mealType} meal`}
+            >
+              <Card className="p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge className={mealTypeColors[meal.mealType]}>
+                    {mealTypeIcons[meal.mealType]} {meal.mealType}
+                  </Badge>
+                  {meal.isAIAnalyzed && (
+                    <Badge variant="outline" className="text-xs">
+                      <IconSparkle size={12} className="mr-1" />
+                      AI
                     </Badge>
-                    {meal.isAIAnalyzed && (
-                      <Badge variant="outline" className="text-xs">
-                        <IconSparkle size={12} className="mr-1" />
-                        AI
-                      </Badge>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(meal.timestamp).toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </span>
-                  </div>
-                  
-                  <p className="text-sm font-medium mb-2">{meal.description}</p>
-
-                  {/* Macros Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div className="bg-red-50 p-2 rounded">
-                      <div className="text-muted-foreground">Calories</div>
-                      <div className="font-bold text-red-700">{meal.calories}</div>
-                    </div>
-                    <div className="bg-blue-50 p-2 rounded">
-                      <div className="text-muted-foreground">Carbs</div>
-                      <div className="font-bold text-blue-700">{meal.carbs.toFixed(1)}g</div>
-                    </div>
-                    <div className="bg-yellow-50 p-2 rounded">
-                      <div className="text-muted-foreground">Fats</div>
-                      <div className="font-bold text-yellow-700">{meal.fats.toFixed(1)}g</div>
-                    </div>
-                    <div className="bg-purple-50 p-2 rounded">
-                      <div className="text-muted-foreground">Protein</div>
-                      <div className="font-bold text-purple-700">{meal.protein.toFixed(1)}g</div>
-                    </div>
-                  </div>
-
-                  {meal.notes && (
-                    <div className="mt-2 text-xs text-muted-foreground italic">
-                      Note: {meal.notes}
-                    </div>
                   )}
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {new Date(meal.timestamp).toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </span>
+                </div>
+                
+                <p className="text-sm font-medium mb-2">{meal.description}</p>
+
+                {/* Macros Grid */}
+                <div className="grid grid-cols-4 gap-2 text-xs">
+                  <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded">
+                    <div className="text-muted-foreground">Cal</div>
+                    <div className="font-bold text-red-700 dark:text-red-400">{meal.calories}</div>
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-950/30 p-2 rounded">
+                    <div className="text-muted-foreground">Carbs</div>
+                    <div className="font-bold text-blue-700 dark:text-blue-400">{meal.carbs.toFixed(0)}g</div>
+                  </div>
+                  <div className="bg-yellow-50 dark:bg-yellow-950/30 p-2 rounded">
+                    <div className="text-muted-foreground">Fat</div>
+                    <div className="font-bold text-yellow-700 dark:text-yellow-400">{meal.fats.toFixed(0)}g</div>
+                  </div>
+                  <div className="bg-purple-50 dark:bg-purple-950/30 p-2 rounded">
+                    <div className="text-muted-foreground">Prot</div>
+                    <div className="font-bold text-purple-700 dark:text-purple-400">{meal.protein.toFixed(0)}g</div>
+                  </div>
                 </div>
 
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => meal.id && onDelete(meal.id)}
-                  className="text-red-600 hover:text-red-700 ml-2"
-                >
-                  <IconTrash size={16} />
-                </Button>
-              </div>
-            </Card>
+                {meal.notes && (
+                  <div className="mt-2 text-xs text-muted-foreground italic">
+                    {meal.notes}
+                  </div>
+                )}
+              </Card>
+            </SwipeToDelete>
           ))}
         </div>
       </div>

@@ -4,7 +4,8 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { IconTrash, IconSparkle, IconDumbbell, IconHeart, IconTimer, IconZap } from '@/components/icons';
+import { IconSparkle, IconDumbbell, IconHeart, IconTimer, IconZap } from '@/components/icons';
+import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { IExercise } from '@/models/Exercise';
 
 interface ExerciseHistoryProps {
@@ -51,123 +52,101 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
 
         <div className="space-y-3">
           {exercises.map((exercise) => (
-            <Card key={exercise.id} className="p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <Badge className={categoryColors[exercise.category]}>
-                      {categoryIcons[exercise.category]}
-                      <span className="ml-1 capitalize">{exercise.category === 'weight-training' ? 'Weight Training' : 'Cardio'}</span>
-                    </Badge>
-                    
-                    {exercise.muscleGroup && (
-                      <Badge variant="outline" className="text-xs">
-                        {muscleGroupEmoji[exercise.muscleGroup]} <span className="capitalize">{exercise.muscleGroup}</span>
-                      </Badge>
-                    )}
-                    
-                    {exercise.isAIAnalyzed && (
-                      <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
-                        <IconSparkle size={12} className="mr-1" />
-                        AI
-                      </Badge>
-                    )}
-                    
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {new Date(exercise.createdAt || exercise.date).toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </span>
-                  </div>
+            <SwipeToDelete
+              key={exercise.id}
+              onDelete={() => exercise.id && onDelete(exercise.id)}
+              deleteLabel={`Delete ${exercise.name}`}
+            >
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <Badge className={categoryColors[exercise.category]}>
+                    {categoryIcons[exercise.category]}
+                    <span className="ml-1 capitalize">{exercise.category === 'weight-training' ? 'Weights' : 'Cardio'}</span>
+                  </Badge>
                   
-                  <p className="text-base font-semibold mb-3">{exercise.name}</p>
+                  {exercise.muscleGroup && (
+                    <Badge variant="outline" className="text-xs">
+                      {muscleGroupEmoji[exercise.muscleGroup]} <span className="capitalize">{exercise.muscleGroup}</span>
+                    </Badge>
+                  )}
+                  
+                  {exercise.isAIAnalyzed && (
+                    <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+                      <IconSparkle size={12} className="mr-1" />
+                      AI
+                    </Badge>
+                  )}
+                  
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {new Date(exercise.createdAt || exercise.date).toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </span>
+                </div>
+                
+                <p className="text-base font-semibold mb-3">{exercise.name}</p>
 
-                  {/* Exercise Details Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-3">
-                    {/* Weight Training Details */}
-                    {exercise.category === 'weight-training' && exercise.sets.length > 0 && (
-                      <>
-                        <div className="bg-blue-50 dark:bg-blue-950/30 p-2.5 rounded-md border border-blue-100 dark:border-blue-900">
-                          <div className="text-muted-foreground mb-0.5">Sets</div>
-                          <div className="font-bold text-blue-700 dark:text-blue-400 text-base">{exercise.sets.length}</div>
-                        </div>
-                        <div className="bg-purple-50 dark:bg-purple-950/30 p-2.5 rounded-md border border-purple-100 dark:border-purple-900">
-                          <div className="text-muted-foreground mb-0.5">Reps</div>
-                          <div className="font-bold text-purple-700 dark:text-purple-400 text-base">
-                            {exercise.sets[0].reps}
-                            {exercise.sets.length > 1 && exercise.sets.every(s => s.reps === exercise.sets[0].reps) 
-                              ? '' 
-                              : ` (avg)`}
-                          </div>
-                        </div>
-                        {exercise.sets[0].weight > 0 && (
-                          <div className="bg-green-50 dark:bg-green-950/30 p-2.5 rounded-md border border-green-100 dark:border-green-900">
-                            <div className="text-muted-foreground mb-0.5">Weight</div>
-                            <div className="font-bold text-green-700 dark:text-green-400 text-base">{exercise.sets[0].weight} kg</div>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {/* Cardio Details */}
-                    {exercise.category === 'cardio' && (
-                      <>
-                        {exercise.duration && (
-                          <div className="bg-red-50 dark:bg-red-950/30 p-2.5 rounded-md border border-red-100 dark:border-red-900">
-                            <div className="text-muted-foreground flex items-center gap-1 mb-0.5">
-                              <IconTimer size={12} />
-                              Duration
-                            </div>
-                            <div className="font-bold text-red-700 dark:text-red-400 text-base">{exercise.duration} min</div>
-                          </div>
-                        )}
-                        {exercise.distance && (
-                          <div className="bg-orange-50 dark:bg-orange-950/30 p-2.5 rounded-md border border-orange-100 dark:border-orange-900">
-                            <div className="text-muted-foreground mb-0.5">Distance</div>
-                            <div className="font-bold text-orange-700 dark:text-orange-400 text-base">{exercise.distance} km</div>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {/* Calories Burned */}
-                    {exercise.caloriesBurned && (
-                      <div className="bg-yellow-50 dark:bg-yellow-950/30 p-2.5 rounded-md border border-yellow-100 dark:border-yellow-900">
-                        <div className="text-muted-foreground flex items-center gap-1 mb-0.5">
-                          <IconZap size={12} />
-                          Calories
-                        </div>
-                        <div className="font-bold text-yellow-700 dark:text-yellow-400 text-base">{exercise.caloriesBurned}</div>
+                <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                  {exercise.category === 'weight-training' && exercise.sets.length > 0 && (
+                    <>
+                      <div className="bg-blue-50 dark:bg-blue-950/30 p-2.5 rounded-md border border-blue-100 dark:border-blue-900">
+                        <div className="text-muted-foreground mb-0.5">Sets</div>
+                        <div className="font-bold text-blue-700 dark:text-blue-400 text-base">{exercise.sets.length}</div>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Notes */}
-                  {exercise.notes && (
-                    <div className="text-xs text-muted-foreground bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-md border border-gray-200 dark:border-gray-800">
-                      💡 {exercise.notes}
-                    </div>
+                      <div className="bg-purple-50 dark:bg-purple-950/30 p-2.5 rounded-md border border-purple-100 dark:border-purple-900">
+                        <div className="text-muted-foreground mb-0.5">Reps</div>
+                        <div className="font-bold text-purple-700 dark:text-purple-400 text-base">
+                          {exercise.sets[0].reps}
+                        </div>
+                      </div>
+                      {exercise.sets[0].weight > 0 && (
+                        <div className="bg-green-50 dark:bg-green-950/30 p-2.5 rounded-md border border-green-100 dark:border-green-900">
+                          <div className="text-muted-foreground mb-0.5">Weight</div>
+                          <div className="font-bold text-green-700 dark:text-green-400 text-base">{exercise.sets[0].weight} kg</div>
+                        </div>
+                      )}
+                    </>
                   )}
 
-                  {/* Original Description for AI-analyzed exercises */}
-                  {exercise.isAIAnalyzed && exercise.description && (
-                    <div className="text-xs text-muted-foreground italic bg-purple-50/50 dark:bg-purple-950/20 p-2 rounded-md border border-purple-100 dark:border-purple-900">
-                      "{exercise.description}"
+                  {exercise.category === 'cardio' && (
+                    <>
+                      {exercise.duration && (
+                        <div className="bg-red-50 dark:bg-red-950/30 p-2.5 rounded-md border border-red-100 dark:border-red-900">
+                          <div className="text-muted-foreground flex items-center gap-1 mb-0.5">
+                            <IconTimer size={12} />
+                            Duration
+                          </div>
+                          <div className="font-bold text-red-700 dark:text-red-400 text-base">{exercise.duration} min</div>
+                        </div>
+                      )}
+                      {exercise.distance && (
+                        <div className="bg-orange-50 dark:bg-orange-950/30 p-2.5 rounded-md border border-orange-100 dark:border-orange-900">
+                          <div className="text-muted-foreground mb-0.5">Distance</div>
+                          <div className="font-bold text-orange-700 dark:text-orange-400 text-base">{exercise.distance} km</div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {exercise.caloriesBurned && (
+                    <div className="bg-yellow-50 dark:bg-yellow-950/30 p-2.5 rounded-md border border-yellow-100 dark:border-yellow-900">
+                      <div className="text-muted-foreground flex items-center gap-1 mb-0.5">
+                        <IconZap size={12} />
+                        Burned
+                      </div>
+                      <div className="font-bold text-yellow-700 dark:text-yellow-400 text-base">{exercise.caloriesBurned} kcal</div>
                     </div>
                   )}
                 </div>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => exercise.id && onDelete(exercise.id)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50 shrink-0"
-                >
-                  <IconTrash size={16} />
-                </Button>
-              </div>
-            </Card>
+                {exercise.notes && (
+                  <div className="text-xs text-muted-foreground bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-md border border-gray-200 dark:border-gray-800">
+                    {exercise.notes}
+                  </div>
+                )}
+              </Card>
+            </SwipeToDelete>
           ))}
         </div>
       </div>

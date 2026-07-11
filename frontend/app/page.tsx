@@ -129,18 +129,18 @@ function ConcentricRings({
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center select-none">
           <span className="font-display text-4xl leading-none" style={{ color: colorOnSurface }}>{overall}<span className="text-xl font-headline">%</span></span>
-          <span className="font-label text-[10px] uppercase tracking-widest mt-1" style={{ color: colorVariant }}>Total Goal</span>
+          <span className="font-label text-xs uppercase tracking-widest mt-1" style={{ color: colorVariant }}>Total Goal</span>
         </div>
       </div>
       {/* Legend */}
       <div className="flex gap-6">
         {rings.map(({ color, label, value, max }) => (
           <div key={label} className="text-center">
-            <span className="font-label text-[10px] block uppercase tracking-wider" style={{ color }}>{label}</span>
+            <span className="font-label text-xs block uppercase tracking-wider" style={{ color }}>{label}</span>
             <span className="font-headline text-sm" style={{ color: colorOnSurface }}>
               {label === "Water" ? `${value.toFixed(1)}L` : `${Math.round(value)}`}
             </span>
-            <span className="font-label text-[9px] block" style={{ color: colorVariant }}>
+            <span className="font-label text-[11px] block" style={{ color: colorVariant }}>
               / {label === "Water" ? `${max}L` : Math.round(max)}
             </span>
           </div>
@@ -581,7 +581,7 @@ export default function Home() {
       <header className="sticky top-0 z-30 px-5 py-3 flex items-center justify-between"
         style={{ background: C.headerBg, backdropFilter: "blur(20px)", borderBottom: `1px solid ${C.outline}40` }}>
         <div className="flex items-center gap-3">
-          <button onClick={handleSignOut} className="active:scale-90 transition-transform">
+          <button onClick={handleSignOut} className="active:scale-90 transition-transform" aria-label="Sign out">
             {currentUser.photoURL
               ? <img src={currentUser.photoURL} alt="" className="w-10 h-10 rounded-full object-cover" style={{ border: `1px solid ${C.outline}` }} />
               : <div className="w-10 h-10 rounded-full glass-card flex items-center justify-center font-headline">
@@ -590,7 +590,7 @@ export default function Home() {
             }
           </button>
           <div>
-            <div className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>{greeting}</div>
+            <div className="font-label text-xs uppercase tracking-widest" style={{ color: C.variant }}>{greeting}</div>
             <div className="font-headline text-base truncate max-w-[140px]">{currentUser.displayName?.split(" ")[0] ?? "Athlete"}</div>
           </div>
         </div>
@@ -599,11 +599,11 @@ export default function Home() {
           <button onClick={toggleTheme}
             className="w-10 h-10 rounded-full flex items-center justify-center glass-card active:scale-90 transition-transform"
             style={{ color: C.variant }}
-            title={isDark ? "Switch to light mode" : "Switch to dark mode"}>
+            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}>
             {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
           </button>
           <div className="text-right">
-            <div className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>Today</div>
+            <div className="font-label text-xs uppercase tracking-widest" style={{ color: C.variant }}>Today</div>
             <div className="font-display text-lg" style={{ color: C.hydration }}>
               {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </div>
@@ -643,7 +643,7 @@ export default function Home() {
                   <span className="font-label text-xs font-normal" style={{ color: C.variant }}>{waterIntake.toFixed(1)}L / {dailyWaterGoal}L</span>
                 </h3>
                 <button onClick={() => { setWaterIntake(0); updateLog({ waterLiters: 0 }, 0); }}
-                  className="font-label text-[10px] px-2.5 py-1 rounded-lg glass-card active:scale-90 transition-transform"
+                  className="font-label text-xs px-2.5 py-1 rounded-lg glass-card active:scale-90 transition-transform"
                   style={{ color: C.variant, border: `1px solid ${C.outline}` }}>Reset</button>
               </div>
 
@@ -662,20 +662,23 @@ export default function Home() {
                   { label: "Bottle", sub: "500ml", amount: 0.5  },
                   { label: "Jug",    sub: "1 L",   amount: 1    },
                 ].map(({ label, sub, amount }) => (
+                  /* iOS HIG: 44pt min touch target — py-3 + text row ≈ 52px ✓ */
                   <button key={label}
+                    aria-label={`Add ${sub} water`}
                     onClick={() => { const n = Math.min(waterIntake + amount, dailyWaterGoal * 2); setWaterIntake(n); updateLog({ waterLiters: n }, n); }}
                     className="rounded-xl py-3 flex flex-col items-center gap-0.5 active:scale-95 transition-all"
                     style={{ background: `${C.hydration}15`, border: `1px solid ${C.hydration}35` }}>
                     <span className="font-headline text-sm" style={{ color: C.hydration }}>+{amount >= 1 ? amount : amount * 1000 >= 500 ? "½" : "¼"}</span>
-                    <span className="font-label text-[9px]" style={{ color: C.variant }}>{sub}</span>
+                    <span className="font-label text-[11px] leading-tight" style={{ color: C.variant }}>{sub}</span>
                   </button>
                 ))}
                 <button
+                  aria-label="Remove 250ml water"
                   onClick={() => { const n = Math.max(waterIntake - 0.25, 0); setWaterIntake(n); updateLog({ waterLiters: n }, n); }}
                   className="rounded-xl py-3 flex flex-col items-center gap-0.5 active:scale-95 transition-all"
                   style={{ background: `${C.outline}30`, border: `1px solid ${C.outline}` }}>
                   <span className="font-headline text-sm" style={{ color: C.variant }}>−¼</span>
-                  <span className="font-label text-[9px]" style={{ color: C.variant }}>250ml</span>
+                  <span className="font-label text-[11px] leading-tight" style={{ color: C.variant }}>250ml</span>
                 </button>
               </div>
 
@@ -723,11 +726,11 @@ export default function Home() {
               {/* AI food input */}
               <div className="glass-card rounded-xl p-4 space-y-3">
                 <div>
-                  <label className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>Meal Type</label>
+                  <label className="font-label text-xs uppercase tracking-widest" style={{ color: C.variant }}>Meal Type</label>
                   <div className="mt-2"><MealTypeSelect value={mealType} onChange={setMealType} /></div>
                 </div>
                 <div>
-                  <label className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>Describe your meal</label>
+                  <label className="font-label text-xs uppercase tracking-widest" style={{ color: C.variant }}>Describe your meal</label>
                   <div className="flex gap-2 mt-2">
                     <input type="text" value={foodDescription} onChange={e => setFoodDescription(e.target.value)}
                       placeholder="e.g. 2 eggs, toast, coffee…" disabled={isAnalyzing}
@@ -770,8 +773,8 @@ export default function Home() {
                         { label: "Body Fat (%)", value: todayBodyFat, onChange: (v: number) => { setTodayBodyFat(v); setWeightSaved(false); }, placeholder: userProfile.bodyFatPercentage.toString() },
                       ].map(({ label, value, onChange, placeholder }) => (
                         <div key={label} className="space-y-1.5">
-                          <label className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>{label}</label>
-                          <input type="number" step="0.1" value={value || ""}
+                          <label className="font-label text-xs uppercase tracking-widest" style={{ color: C.variant }}>{label}</label>
+                          <input type="number" step="0.1" inputMode="decimal" value={value || ""}
                             onChange={e => onChange(parseFloat(e.target.value) || 0)}
                             placeholder={placeholder}
                             className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
@@ -816,7 +819,7 @@ export default function Home() {
 
             {/* AI input */}
             <div className="glass-card rounded-xl p-4">
-              <label className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>Log with AI</label>
+              <label className="font-label text-xs uppercase tracking-widest" style={{ color: C.variant }}>Log with AI</label>
               <div className="flex gap-2 mt-2">
                 <input type="text" value={exerciseDescription} onChange={e => setExerciseDescription(e.target.value)}
                   placeholder="e.g. 3x10 bench press 80kg…" disabled={isAnalyzingExercise}
@@ -934,7 +937,7 @@ export default function Home() {
 
             <div className="glass-card rounded-xl p-4">
               <h3 className="font-headline text-sm mb-2" style={{ color: C.onSurface }}>Activity Heatmap</h3>
-              <p className="font-label text-[10px] mb-3 uppercase tracking-widest" style={{ color: C.variant }}>
+              <p className="font-label text-xs mb-3 uppercase tracking-widest" style={{ color: C.variant }}>
                 Green = all goals · Yellow = partial · Gray = minimal
               </p>
               <StreakCalendar logs={streakLogs} monthsToShow={1} />
@@ -1028,7 +1031,7 @@ export default function Home() {
                 <div className="space-y-4">
                   <div className="text-center py-5 rounded-xl" style={{ background: `${C.hydration}10`, border: `1px solid ${C.hydration}20` }}>
                     <div className="font-display text-6xl" style={{ color: C.hydration }}>{aiAnalysis.overallScore}</div>
-                    <div className="font-label text-[10px] uppercase tracking-widest mt-1" style={{ color: C.variant }}>Fitness Score</div>
+                    <div className="font-label text-xs uppercase tracking-widest mt-1" style={{ color: C.variant }}>Fitness Score</div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
@@ -1038,8 +1041,8 @@ export default function Home() {
                       { label: "Exercise",  text: aiAnalysis.exerciseInsight,  color: C.exercise },
                     ].map(({ label, text, color }) => (
                       <div key={label} className="rounded-xl p-3" style={{ background: `${color}10`, border: `1px solid ${color}20` }}>
-                        <div className="font-label text-[10px] uppercase tracking-widest mb-1.5" style={{ color }}>{label}</div>
-                        <p className="font-body text-[10px] leading-relaxed line-clamp-4" style={{ color: C.variant }}>{text}</p>
+                        <div className="font-label text-xs uppercase tracking-widest mb-1.5" style={{ color }}>{label}</div>
+                        <p className="font-body text-xs leading-relaxed line-clamp-4" style={{ color: C.variant }}>{text}</p>
                       </div>
                     ))}
                   </div>
@@ -1077,7 +1080,7 @@ export default function Home() {
 
                   {aiAnalysis.weeklyTip && (
                     <div className="rounded-xl p-4" style={{ background: `${C.exercise}10`, border: `1px solid ${C.exercise}20` }}>
-                      <div className="font-label text-[10px] uppercase tracking-widest mb-1.5" style={{ color: C.exercise }}>Tip</div>
+                      <div className="font-label text-xs uppercase tracking-widest mb-1.5" style={{ color: C.exercise }}>Tip</div>
                       <p className="font-body text-sm" style={{ color: C.onSurface }}>{aiAnalysis.weeklyTip}</p>
                     </div>
                   )}
@@ -1100,22 +1103,29 @@ export default function Home() {
       {/* ── Floating bottom navigation ── */}
       <nav className="fixed bottom-4 left-4 right-4 z-40 rounded-2xl pb-safe"
         style={{ background: C.navBg, backdropFilter: "blur(20px)", border: `1px solid ${C.outline}`, boxShadow: isDark ? "0 8px 32px #00000080" : "0 4px 24px rgba(0,0,0,0.12)" }}>
-        <div className="flex items-stretch justify-around px-2 pt-2 pb-1">
+        <div className="flex items-stretch justify-around px-2 pt-2 pb-2">
           {NAV.map(({ id, Icon, label }) => {
             const isActive = activeTab === id;
             const accentColor = id === "train" ? C.exercise : id === "progress" ? C.nutrition : C.hydration;
             return (
+              /* iOS HIG: minimum 44×44pt touch target */
               <button key={id} onClick={() => setActiveTab(id)}
-                className="flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-xl transition-all active:scale-90 relative min-w-[48px]">
+                aria-label={`${label} tab`}
+                aria-pressed={isActive}
+                className="flex flex-col items-center justify-center gap-1 rounded-xl transition-all active:scale-90 relative"
+                style={{ minWidth: 56, minHeight: 52 }}>
                 {isActive && (
-                  <div className="absolute top-0 left-2 right-2 h-0.5 rounded-full" style={{ background: accentColor }} />
+                  <div className="absolute top-1 left-3 right-3 h-0.5 rounded-full" style={{ background: accentColor }} />
                 )}
-                <Icon
-                  size={20}
-                  style={{ color: isActive ? accentColor : C.variant }}
-                  className={`transition-all ${isActive ? "scale-110" : ""}`}
-                />
-                <span className="font-label text-[9px] uppercase tracking-wide transition-all"
+                <div className={`rounded-xl transition-all ${isActive ? "px-3 py-1" : ""}`}
+                  style={isActive ? { background: `${accentColor}18` } : {}}>
+                  <Icon
+                    size={22}
+                    style={{ color: isActive ? accentColor : C.variant }}
+                    className={`transition-all ${isActive ? "scale-110" : ""}`}
+                  />
+                </div>
+                <span className="font-label text-[11px] uppercase tracking-wide transition-all leading-none"
                   style={{ color: isActive ? accentColor : C.variant }}>{label}</span>
               </button>
             );

@@ -150,16 +150,62 @@ html:not(.dark) .glass-card {
   padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
 }
 
+/* ── iOS HIG: Tab content fade transition ─────────────────────────────────── */
+/* Triggers automatically via Radix data-state="active" attribute */
+[role="tabpanel"][data-state="active"] {
+  animation: tabFadeIn 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── iOS HIG: Swipe-to-delete row ─────────────────────────────────────────── */
+.swipe-row {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y; /* allow vertical scroll; horizontal = our gesture */
+}
+.swipe-row__content {
+  will-change: transform;
+  transition: transform 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.swipe-row__delete {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 1.25rem;
+  background: #ff3b30; /* Apple systemRed */
+  transform: translateX(100%);
+  transition: transform 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  border-radius: 0 0.75rem 0.75rem 0;
+}
+.swipe-row--open .swipe-row__content  { transform: translateX(-72px); }
+.swipe-row--open .swipe-row__delete   { transform: translateX(0); }
+
 /* ── Base ─────────────────────────────────────────────────────────────────────── */
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* iOS HIG: remove tap flash on all elements */
+    -webkit-tap-highlight-color: transparent;
   }
+
+  /* iOS HIG: touch-action manipulation removes 300ms tap delay */
+  button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+
   body {
     background-color: #080808;
     color: #e5e2e1;
     -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%; /* prevent iOS auto font scaling */
     transition: background-color 0.3s ease, color 0.2s ease;
   }
   html:not(.dark) body {
@@ -167,7 +213,10 @@ html:not(.dark) .glass-card {
     color: #1a1a1a;
   }
 
-  /* Prevent iOS zoom on input focus */
+  /* iOS HIG: Minimum 11pt text everywhere — raise sub-12px classes */
+  .font-label { font-size: max(0.75rem, 11px); } /* was sometimes 9-10px */
+
+  /* Prevent iOS zoom on input focus (inputs must be ≥16px font-size) */
   input, textarea, select {
     font-size: 16px;
   }
@@ -181,6 +230,12 @@ html:not(.dark) .glass-card {
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* iOS HIG: momentum scroll for content areas */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
   }
 
   /* Scrollbar styling */
