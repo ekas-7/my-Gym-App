@@ -9,7 +9,7 @@ import {
   getExercises, addExercise, deleteExercise,
   saveWeightLog, getStreakLogs,
 } from "@/lib/firestore";
-import { IFitnessLog, IMeal, IExercise, IUserProfile, estimateBodyFat, calculateBMI } from "@/lib/types";
+import { IFitnessLog, IMeal, IExercise, IUserProfile, estimateBodyFat, calculateBMI, isProfileComplete } from "@/lib/types";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { CustomizableExerciseItem } from "@/components/customizable-exercise-item";
@@ -286,10 +286,11 @@ export default function Home() {
   /* profile settings modal */
   const [showProfile,    setShowProfile]    = useState(false);
   const [profileSaving,  setProfileSaving]  = useState(false);
-  const [pfHeight,       setPfHeight]       = useState("");
-  const [pfAge,          setPfAge]          = useState("");
-  const [pfGender,       setPfGender]       = useState<"male"|"female">("male");
-  const [pfTargetWeight, setPfTargetWeight] = useState("");
+  const [pfHeight,        setPfHeight]        = useState("");
+  const [pfAge,           setPfAge]           = useState("");
+  const [pfGender,        setPfGender]        = useState<"male"|"female"|"">("");
+  const [pfCurrentWeight, setPfCurrentWeight] = useState("");
+  const [pfTargetWeight,  setPfTargetWeight]  = useState("");
   const [pfWaterGoal,    setPfWaterGoal]    = useState("");
   const [pfCalorieGoal,  setPfCalorieGoal]  = useState("");
   const [pfProteinGoal,  setPfProteinGoal]  = useState("");
@@ -329,20 +330,14 @@ export default function Home() {
   const fetchUserProfile = useCallback(async (uid: string) => {
     let p = await getProfile(uid);
     if (!p) {
-      // First sign-in: create a sensible default profile so Body Metrics works immediately
+      // First sign-in: seed ONLY standard app goal targets — never fabricate
+      // personal body data (height/age/gender/weight). Those come from onboarding.
       await saveProfile(uid, {
-        userId: uid,
-        height: 170,
-        age: 25,
-        gender: "male",
-        currentWeight: 70,
-        targetWeight: 70,
-        bodyFatPercentage: 15,
         dailyCalorieTarget: 2000,
         dailyProteinTarget: 150,
         waterGoal: 4,
         exerciseGoal: 500,
-      } as unknown as IUserProfile);
+      });
       p = await getProfile(uid);
     }
     if (p) {
@@ -550,7 +545,8 @@ export default function Home() {
     if (!userProfile) return;
     setPfHeight(userProfile.height ? String(userProfile.height) : "");
     setPfAge(userProfile.age ? String(userProfile.age) : "");
-    setPfGender(userProfile.gender ?? "male");
+    setPfGender(userProfile.gender ?? "");
+    setPfCurrentWeight(userProfile.currentWeight ? String(userProfile.currentWeight) : "");
     setPfTargetWeight(userProfile.targetWeight ? String(userProfile.targetWeight) : "");
     setPfWaterGoal(String(dailyWaterGoal));
     setPfCalorieGoal(String(calorieGoal));
@@ -562,16 +558,17 @@ export default function Home() {
   const saveProfileSettings = async () => {
     if (!currentUser) return;
     setProfileSaving(true);
-    const update: Partial<IUserProfile> = {
-      height: parseFloat(pfHeight) || 170,
-      age: parseInt(pfAge) || undefined,
-      gender: pfGender,
-      targetWeight: parseFloat(pfTargetWeight) || undefined,
-      waterGoal: parseFloat(pfWaterGoal) || 4,
-      dailyCalorieTarget: parseInt(pfCalorieGoal) || 2000,
-      dailyProteinTarget: parseInt(pfProteinGoal) || 150,
-      exerciseGoal: parseInt(pfExerciseGoal) || 500,
-    };
+    // Only persist fields the user actually filled in — no fabricated fallbacks.
+    const update: Partial<IUserProfile> = {};
+    if (pfHeight.trim())        update.height        = parseFloat(pfHeight);
+    if (pfAge.trim())           update.age           = parseInt(pfAge);
+    if (pfGender)               update.gender        = pfGender;
+    if (pfCurrentWeight.trim()) update.currentWeight = parseFloat(pfCurrentWeight);
+    if (pfTargetWeight.trim())  update.targetWeight  = parseFloat(pfTargetWeight);
+    if (pfWaterGoal.trim())     update.waterGoal          = parseFloat(pfWaterGoal);
+    if (pfCalorieGoal.trim())   update.dailyCalorieTarget = parseInt(pfCalorieGoal);
+    if (pfProteinGoal.trim())   update.dailyProteinTarget = parseInt(pfProteinGoal);
+    if (pfExerciseGoal.trim())  update.exerciseGoal       = parseInt(pfExerciseGoal);
     await saveProfile(currentUser.uid, update);
     await fetchUserProfile(currentUser.uid);
     setProfileSaving(false);
@@ -653,7 +650,15 @@ export default function Home() {
   const greeting = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: C.bg, color: C.onSurface }}>
+    <div className="min-h-screen flex flex-col relative" style={{ background: C.bg, color: C.onSurface }}>
+
+      {/* ── Ambient glow background (Kinetic Obsidian) ── */}
+      {isDark && (
+        <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden>
+          <div className="absolute rounded-full" style={{ top: "-10%", right: "-10%", width: "50%", height: "50%", background: `${C.hydration}0d`, filter: "blur(120px)" }} />
+          <div className="absolute rounded-full" style={{ bottom: "-5%", left: "-10%", width: "40%", height: "40%", background: `${C.nutrition}0a`, filter: "blur(100px)" }} />
+        </div>
+      )}
 
       {/* ── Top app bar ── */}
       <header className="sticky top-0 z-30 px-5 py-3 flex items-center justify-between glass-overlay"
@@ -843,10 +848,30 @@ export default function Home() {
               <h3 className="font-headline text-sm flex items-center gap-2" style={{ color: C.onSurface }}>
                 <IconScale size={15} style={{ color: C.hydration }} /> Body Metrics
               </h3>
-              {userProfile ? (() => {
-                const effWeight = todayWeight || userProfile.currentWeight;
-                const estBF = estimateBodyFat(effWeight, userProfile.height, userProfile.age, userProfile.gender);
-                const bmi   = calculateBMI(effWeight, userProfile.height);
+              {!userProfile ? (
+                <div className="glass-card rounded-xl p-8 text-center space-y-2" style={{ color: C.variant }}>
+                  <IconSpinner size={20} className="animate-spin mx-auto" style={{ color: C.hydration }} />
+                  <p className="font-body text-sm">Loading…</p>
+                </div>
+              ) : !isProfileComplete(userProfile) ? (
+                <div className="glass-card rounded-xl p-6 text-center space-y-3">
+                  <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center" style={{ background: `${C.hydration}15` }}>
+                    <IconScale size={22} style={{ color: C.hydration }} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-headline text-sm" style={{ color: C.onSurface }}>Complete your profile</p>
+                    <p className="font-body text-xs" style={{ color: C.variant }}>Add your height &amp; weight to unlock BMI and body-fat tracking. Nothing is assumed.</p>
+                  </div>
+                  <button onClick={openProfile}
+                    className="w-full h-11 rounded-xl font-headline text-sm active:scale-95 transition-all"
+                    style={{ background: C.hydration, color: "#001f24" }}>
+                    Set up profile
+                  </button>
+                </div>
+              ) : (() => {
+                const effWeight = todayWeight || userProfile.currentWeight!;
+                const estBF = estimateBodyFat(effWeight, userProfile.height!, userProfile.age, userProfile.gender || undefined);
+                const bmi   = calculateBMI(effWeight, userProfile.height!);
                 return (
                 <>
                   <WeightGraph uid={currentUser.uid} days={30} targetWeight={userProfile.targetWeight} />
@@ -855,7 +880,7 @@ export default function Home() {
                       <label className="font-label text-xs uppercase tracking-widest" style={{ color: C.variant }}>Weight (kg)</label>
                       <input type="number" step="0.1" inputMode="decimal" value={todayWeight || ""}
                         onChange={e => { setTodayWeight(parseFloat(e.target.value) || 0); setWeightSaved(false); }}
-                        placeholder={userProfile.currentWeight.toString()}
+                        placeholder={userProfile.currentWeight!.toString()}
                         className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
                         style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
                     </div>
@@ -879,14 +904,14 @@ export default function Home() {
                     <button onClick={openProfile} className="w-full text-left rounded-xl px-3 py-2 flex items-center justify-between active:scale-[0.98] transition-transform"
                       style={{ background: "transparent", border: `1px dashed ${C.outlineVar}` }}>
                       <span className="font-label text-[11px]" style={{ color: C.variant }}>
-                        Height {userProfile.height}cm · {userProfile.age ?? "—"}y · {userProfile.gender === "female" ? "F" : "M"}
+                        Height {userProfile.height}cm · {userProfile.age ?? "—"}y · {userProfile.gender ? (userProfile.gender === "female" ? "F" : "M") : "—"}
                       </span>
                       <span className="font-label text-[11px]" style={{ color: C.hydration }}>Edit</span>
                     </button>
 
                     {todayWeight ? (
                       <p className="font-label text-xs" style={{ color: C.variant }}>
-                        Change: {todayWeight > userProfile.currentWeight ? "+" : ""}{(todayWeight - userProfile.currentWeight).toFixed(1)} kg from baseline
+                        Change: {todayWeight > userProfile.currentWeight! ? "+" : ""}{(todayWeight - userProfile.currentWeight!).toFixed(1)} kg from baseline
                       </p>
                     ) : null}
                     <button disabled={!todayWeight}
@@ -895,7 +920,7 @@ export default function Home() {
                       onClick={async () => {
                         if (!todayWeight || !currentUser) return;
                         const today = todayMidnight();
-                        const bf = estimateBodyFat(todayWeight, userProfile.height, userProfile.age, userProfile.gender);
+                        const bf = estimateBodyFat(todayWeight, userProfile.height!, userProfile.age, userProfile.gender || undefined);
                         await saveWeightLog(currentUser.uid, today, { date: today, weight: todayWeight, bodyFatPercentage: bf });
                         await updateLog({ weight: todayWeight, bodyFatPercentage: bf });
                         setWeightSaved(true);
@@ -905,12 +930,7 @@ export default function Home() {
                   </div>
                 </>
                 );
-              })() : (
-                <div className="glass-card rounded-xl p-8 text-center space-y-2" style={{ color: C.variant }}>
-                  <IconSpinner size={20} className="animate-spin mx-auto" style={{ color: C.hydration }} />
-                  <p className="font-body text-sm">Setting up your profile…</p>
-                </div>
-              )}
+              })()}
             </div>
           </TabsContent>
 
@@ -1232,18 +1252,59 @@ export default function Home() {
             </div>
 
             <div className="p-5 space-y-5">
+              {/* Kinetic hero card */}
+              <section className="relative">
+                <div className="absolute -inset-0.5 rounded-2xl opacity-20 blur"
+                  style={{ background: `linear-gradient(90deg, ${C.hydration}, transparent)` }} />
+                <div className="glass-card relative rounded-2xl p-5 flex flex-col items-center text-center">
+                  <div className="relative mb-3">
+                    <div className="w-20 h-20 rounded-full p-1" style={{ border: `2px solid ${C.hydration}` }}>
+                      {currentUser.photoURL
+                        ? <img src={currentUser.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
+                        : <div className="w-full h-full rounded-full flex items-center justify-center font-headline text-2xl" style={{ background: C.inputBg, color: C.hydration }}>{currentUser.displayName?.[0] ?? "A"}</div>}
+                    </div>
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full font-label text-[10px] glow-box-cyan"
+                      style={{ background: C.hydration, color: "#001f24" }}>
+                      {isProfileComplete(userProfile) ? "ATHLETE" : "NEW"}
+                    </div>
+                  </div>
+                  <h1 className="font-display text-xl" style={{ color: C.onSurface }}>{currentUser.displayName ?? "Athlete"}</h1>
+                  <p className="font-label text-[11px] tracking-widest mt-0.5" style={{ color: C.variant }}>
+                    MEMBER SINCE {currentUser.metadata?.creationTime ? new Date(currentUser.metadata.creationTime).getFullYear() : new Date().getFullYear()}
+                  </p>
+                </div>
+              </section>
+
+              {/* Stats grid */}
+              <section className="grid grid-cols-2 gap-3">
+                <div className="glass-card rounded-xl p-4 flex flex-col items-center justify-center">
+                  <span className="font-label text-[11px] mb-1" style={{ color: C.variant }}>LOGGED DAYS</span>
+                  <span className="font-display text-2xl" style={{ color: C.hydration }}>{streakLogs.length}</span>
+                </div>
+                <div className="glass-card rounded-xl p-4 flex flex-col items-center justify-center">
+                  <span className="font-label text-[11px] mb-1" style={{ color: C.variant }}>GOAL DAYS</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="font-display text-2xl" style={{ color: C.nutrition }}>{streakLogs.filter(l => l.isStreakDay).length}</span>
+                    <span className="font-label text-[11px]" style={{ color: C.nutrition }}>DAYS</span>
+                  </div>
+                </div>
+              </section>
+
               {/* Body basics */}
               <div className="space-y-3">
                 <h4 className="font-label text-xs uppercase tracking-widest" style={{ color: C.hydration }}>Body</h4>
+                {!isProfileComplete(userProfile) && (
+                  <p className="font-body text-xs -mt-1" style={{ color: C.variant }}>Enter your real measurements — the app never assumes values for you.</p>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="font-label text-[11px] uppercase tracking-wider" style={{ color: C.variant }}>Height (cm)</label>
-                    <input type="number" inputMode="decimal" value={pfHeight} onChange={e => setPfHeight(e.target.value)} placeholder="170"
+                    <input type="number" inputMode="decimal" value={pfHeight} onChange={e => setPfHeight(e.target.value)} placeholder="e.g. 175"
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
                   </div>
                   <div className="space-y-1.5">
                     <label className="font-label text-[11px] uppercase tracking-wider" style={{ color: C.variant }}>Age</label>
-                    <input type="number" inputMode="numeric" value={pfAge} onChange={e => setPfAge(e.target.value)} placeholder="25"
+                    <input type="number" inputMode="numeric" value={pfAge} onChange={e => setPfAge(e.target.value)} placeholder="e.g. 28"
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
                   </div>
                 </div>
@@ -1263,10 +1324,17 @@ export default function Home() {
                   </div>
                   <p className="font-label text-[10px]" style={{ color: C.variant }}>Used to estimate body-fat % from your weight.</p>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="font-label text-[11px] uppercase tracking-wider" style={{ color: C.variant }}>Target Weight (kg)</label>
-                  <input type="number" inputMode="decimal" value={pfTargetWeight} onChange={e => setPfTargetWeight(e.target.value)} placeholder="70"
-                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="font-label text-[11px] uppercase tracking-wider" style={{ color: C.variant }}>Current Weight (kg)</label>
+                    <input type="number" inputMode="decimal" value={pfCurrentWeight} onChange={e => setPfCurrentWeight(e.target.value)} placeholder="—"
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-label text-[11px] uppercase tracking-wider" style={{ color: C.variant }}>Target Weight (kg)</label>
+                    <input type="number" inputMode="decimal" value={pfTargetWeight} onChange={e => setPfTargetWeight(e.target.value)} placeholder="—"
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                  </div>
                 </div>
               </div>
 

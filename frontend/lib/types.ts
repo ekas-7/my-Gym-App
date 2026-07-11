@@ -85,24 +85,31 @@ export interface IExercise {
 
 export interface IUserProfile {
   id?: string;
-  height: number;                 // cm — used for BMI & body-fat estimate
+  // ── Personal body data — never fabricated; entered by the user in onboarding ──
+  height?: number;                // cm — used for BMI & body-fat estimate
   age?: number;                   // years — used for body-fat estimate
   gender?: 'male' | 'female';     // used for body-fat estimate
-  currentWeight: number;
-  targetWeight: number;
-  bodyFatPercentage: number;
-  skeletalMuscle: number;
-  visceralFatIndex: number;
-  bmr: number;
-  activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very-active';
-  goalType: 'cut' | 'bulk' | 'maintain';
-  weeklyWeightChangeGoal: number;
+  currentWeight?: number;
+  targetWeight?: number;
+  bodyFatPercentage?: number;
+  skeletalMuscle?: number;
+  visceralFatIndex?: number;
+  bmr?: number;
+  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very-active';
+  goalType?: 'cut' | 'bulk' | 'maintain';
+  weeklyWeightChangeGoal?: number;
+  // ── App goal defaults (standard targets, safe to seed) ──
   dailyCalorieTarget: number;
   dailyProteinTarget: number;
   waterGoal: number;
   exerciseGoal: number;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+/** A profile is considered "set up" once the user has entered their real height & weight. */
+export function isProfileComplete(p?: IUserProfile | null): boolean {
+  return !!p && !!p.height && !!p.currentWeight;
 }
 
 // ─── Weight Log ───────────────────────────────────────────────────────────────
