@@ -131,6 +131,13 @@
   -webkit-backdrop-filter: blur(20px);
 }
 
+/* Light mode glass card */
+html:not(.dark) .glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+}
+
 /* ── Glow effects ────────────────────────────────────────────────────────────── */
 
 .glow-cyan  { box-shadow: 0 0 15px rgba(0, 218, 243, 0.25); }
@@ -153,6 +160,11 @@
     background-color: #080808;
     color: #e5e2e1;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s ease, color 0.2s ease;
+  }
+  html:not(.dark) body {
+    background-color: #f0f2f5;
+    color: #1a1a1a;
   }
 
   /* Prevent iOS zoom on input focus */

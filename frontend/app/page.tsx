@@ -24,16 +24,39 @@ import { Loader2 } from "lucide-react";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
    Kinetic Performance palette (from Stitch project 4530245392740715731)
+   Dark  = original Stitch design
+   Light = bright counterpart keeping the accent personality
 */
-const C = {
+const DARK = {
   hydration: "#00daf3",
   nutrition:  "#9ffb00",
   exercise:  "#ff6b00",
   surface:   "#1c1c1e",
   bg:        "#080808",
+  bgHero:    "radial-gradient(ellipse at 50% 0%, #00daf315 0%, #080808 70%)",
   onSurface: "#e5e2e1",
   variant:   "#bac9cc",
   outline:   "#3b494c",
+  navBg:     "#1c1c1edd",
+  headerBg:  "#080808cc",
+  inputBg:   "#2a2a2a",
+  badgeBg:   "#2a2a2a",
+} as const;
+
+const LIGHT = {
+  hydration: "#0099bb",
+  nutrition:  "#5a9200",
+  exercise:  "#e05a00",
+  surface:   "#ffffff",
+  bg:        "#f0f2f5",
+  bgHero:    "radial-gradient(ellipse at 50% 0%, #0099bb18 0%, #f0f2f5 70%)",
+  onSurface: "#1a1a1a",
+  variant:   "#667080",
+  outline:   "#d4d8dc",
+  navBg:     "rgba(255,255,255,0.92)",
+  headerBg:  "rgba(240,242,245,0.85)",
+  inputBg:   "#f3f4f6",
+  badgeBg:   "#f3f4f6",
 } as const;
 
 /* ─── Types ──────────────────────────────────────────────────────────────────*/
@@ -60,16 +83,19 @@ interface AIAnalysis {
 /* ─── Concentric ring widget ─────────────────────────────────────────────────*/
 
 function ConcentricRings({
-  water, waterGoal, calories, calorieGoal, exercise, exerciseGoal
+  water, waterGoal, calories, calorieGoal, exercise, exerciseGoal,
+  colorHydration, colorNutrition, colorExercise, colorOnSurface, colorVariant,
 }: {
   water: number; waterGoal: number;
   calories: number; calorieGoal: number;
   exercise: number; exerciseGoal: number;
+  colorHydration: string; colorNutrition: string; colorExercise: string;
+  colorOnSurface: string; colorVariant: string;
 }) {
   const rings = [
-    { r: 78, color: C.hydration, value: water,     max: waterGoal,    label: "Water" },
-    { r: 60, color: C.nutrition,  value: calories,  max: calorieGoal,  label: "Kcal" },
-    { r: 44, color: C.exercise,  value: exercise,  max: exerciseGoal, label: "Burn" },
+    { r: 78, color: colorHydration, value: water,     max: waterGoal,    label: "Water" },
+    { r: 60, color: colorNutrition,  value: calories,  max: calorieGoal,  label: "Kcal" },
+    { r: 44, color: colorExercise,  value: exercise,  max: exerciseGoal, label: "Burn" },
   ];
   const overall = Math.round(rings.reduce((s, r) => s + Math.min((r.value / Math.max(r.max, 0.01)) * 100, 100), 0) / 3);
 
@@ -97,8 +123,8 @@ function ConcentricRings({
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center select-none">
-          <span className="font-display text-4xl text-[#e5e2e1] leading-none">{overall}<span className="text-xl font-headline">%</span></span>
-          <span className="font-label text-[10px] text-[#bac9cc] uppercase tracking-widest mt-1">Total Goal</span>
+          <span className="font-display text-4xl leading-none" style={{ color: colorOnSurface }}>{overall}<span className="text-xl font-headline">%</span></span>
+          <span className="font-label text-[10px] uppercase tracking-widest mt-1" style={{ color: colorVariant }}>Total Goal</span>
         </div>
       </div>
       {/* Legend */}
@@ -106,10 +132,10 @@ function ConcentricRings({
         {rings.map(({ color, label, value, max }) => (
           <div key={label} className="text-center">
             <span className="font-label text-[10px] block uppercase tracking-wider" style={{ color }}>{label}</span>
-            <span className="font-headline text-sm text-[#e5e2e1]">
+            <span className="font-headline text-sm" style={{ color: colorOnSurface }}>
               {label === "Water" ? `${value.toFixed(1)}L` : `${Math.round(value)}`}
             </span>
-            <span className="font-label text-[9px] text-[#bac9cc] block">
+            <span className="font-label text-[9px] block" style={{ color: colorVariant }}>
               / {label === "Water" ? `${max}L` : Math.round(max)}
             </span>
           </div>
@@ -183,7 +209,27 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isMounted, setIsMounted]     = useState(false);
-  useEffect(() => { setIsMounted(true); }, []);
+  const [isDark, setIsDark]           = useState(true);
+
+  /* Persist + apply theme */
+  useEffect(() => {
+    const saved = localStorage.getItem("fitTheme");
+    const dark  = saved ? saved === "dark" : true;
+    setIsDark(dark);
+    document.documentElement.classList.toggle("dark", dark);
+    setIsMounted(true);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("fitTheme", next ? "dark" : "light");
+  };
+
+  /* Dynamic color palette */
+  const C = isDark ? DARK : LIGHT;
+
   useEffect(() => onAuthStateChanged(auth, u => { setCurrentUser(u); setAuthLoading(false); }), []);
 
   /* daily state */
@@ -442,17 +488,23 @@ export default function Home() {
   /* ─── Splash / sign-in ───────────────────────────────────────────────────────*/
 
   if (authLoading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: isDark ? "#080808" : "#f0f2f5" }}>
       <div className="flex flex-col items-center gap-6">
         <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl glass-card">🏋️</div>
-        <Loader2 className="h-5 w-5 animate-spin" style={{ color: C.hydration }} />
+        <Loader2 className="h-5 w-5 animate-spin" style={{ color: DARK.hydration }} />
       </div>
     </div>
   );
 
   if (!currentUser) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-10 px-5"
-      style={{ background: `radial-gradient(ellipse at 50% 0%, ${C.hydration}15 0%, ${C.bg} 70%)` }}>
+      style={{ background: C.bgHero }}>
+
+      {/* Theme toggle on sign-in screen */}
+      <button onClick={toggleTheme}
+        className="absolute top-5 right-5 w-10 h-10 rounded-full glass-card flex items-center justify-center text-xl active:scale-90 transition-transform">
+        {isDark ? "☀️" : "🌙"}
+      </button>
 
       <div className="text-center space-y-4">
         <div className="w-24 h-24 rounded-[28px] glass-card flex items-center justify-center text-5xl mx-auto"
@@ -505,7 +557,7 @@ export default function Home() {
 
       {/* ── Top app bar ── */}
       <header className="sticky top-0 z-30 px-5 py-3 flex items-center justify-between"
-        style={{ background: `${C.bg}cc`, backdropFilter: "blur(20px)", borderBottom: `1px solid ${C.outline}40` }}>
+        style={{ background: C.headerBg, backdropFilter: "blur(20px)", borderBottom: `1px solid ${C.outline}40` }}>
         <div className="flex items-center gap-3">
           <button onClick={handleSignOut} className="active:scale-90 transition-transform">
             {currentUser.photoURL
@@ -520,16 +572,25 @@ export default function Home() {
             <div className="font-headline text-base truncate max-w-[140px]">{currentUser.displayName?.split(" ")[0] ?? "Athlete"}</div>
           </div>
         </div>
-        <div className="text-right">
-          <div className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>Today</div>
-          <div className="font-display text-lg" style={{ color: C.hydration }}>
-            {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        <div className="flex items-center gap-3">
+          {/* Theme toggle */}
+          <button onClick={toggleTheme}
+            className="w-10 h-10 rounded-full flex items-center justify-center glass-card text-xl active:scale-90 transition-transform"
+            title={isDark ? "Switch to light mode" : "Switch to dark mode"}>
+            {isDark ? "☀️" : "🌙"}
+          </button>
+          <div className="text-right">
+            <div className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>Today</div>
+            <div className="font-display text-lg" style={{ color: C.hydration }}>
+              {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            </div>
           </div>
         </div>
       </header>
 
       {/* ── Daily activity hero ── */}
-      <div className="px-5 pt-6 pb-2 flex flex-col items-center gap-1">
+      <div className="px-5 pt-6 pb-2 flex flex-col items-center gap-1"
+        style={{ background: isDark ? undefined : `linear-gradient(180deg, #0099bb08 0%, transparent 100%)` }}>
         {isLoading ? (
           <div className="h-52 flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin" style={{ color: C.hydration }} />
@@ -538,7 +599,9 @@ export default function Home() {
           <ConcentricRings
             water={waterIntake} waterGoal={dailyWaterGoal}
             calories={calories} calorieGoal={calorieGoal}
-            exercise={exerciseCalories} exerciseGoal={exerciseGoal} />
+            exercise={exerciseCalories} exerciseGoal={exerciseGoal}
+            colorHydration={C.hydration} colorNutrition={C.nutrition}
+            colorExercise={C.exercise} colorOnSurface={C.onSurface} colorVariant={C.variant} />
         )}
       </div>
 
@@ -645,7 +708,7 @@ export default function Home() {
                     placeholder="e.g. 2 eggs, toast, coffee…" disabled={isAnalyzing}
                     onKeyDown={e => e.key === "Enter" && analyzeFood()}
                     className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "#2a2a2a", border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                    style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
                   <button onClick={analyzeFood} disabled={isAnalyzing || !foodDescription.trim()}
                     className="px-4 rounded-xl font-headline text-sm active:scale-95 transition-all disabled:opacity-40"
                     style={{ background: C.nutrition, color: "#102000" }}>
@@ -683,7 +746,7 @@ export default function Home() {
                   placeholder="e.g. 3x10 bench press 80kg…" disabled={isAnalyzingExercise}
                   onKeyDown={e => e.key === "Enter" && analyzeExercise()}
                   className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
-                  style={{ background: "#2a2a2a", border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                  style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
                 <button onClick={analyzeExercise} disabled={isAnalyzingExercise || !exerciseDescription.trim()}
                   className="px-4 rounded-xl font-headline text-sm active:scale-95 transition-all disabled:opacity-40"
                   style={{ background: C.exercise, color: "#351000" }}>
@@ -699,7 +762,7 @@ export default function Home() {
                 <button key={cat} onClick={() => setExerciseCategory(cat)}
                   className="flex-1 h-11 rounded-xl font-headline text-sm active:scale-95 transition-all"
                   style={{
-                    background: exerciseCategory === cat ? C.exercise : "#2a2a2a",
+                    background: exerciseCategory === cat ? C.exercise : C.inputBg,
                     color: exerciseCategory === cat ? "#351000" : C.variant,
                     border: `1px solid ${exerciseCategory === cat ? C.exercise : C.outline}`,
                   }}>
@@ -727,7 +790,7 @@ export default function Home() {
                     <button key={cat.id} onClick={() => setSelectedMuscleGroup(cat.id)}
                       className="flex flex-col items-center py-2.5 rounded-xl text-xs font-headline active:scale-90 transition-all"
                       style={{
-                        background: selectedMuscleGroup === cat.id ? `${C.exercise}20` : "#2a2a2a",
+                        background: selectedMuscleGroup === cat.id ? `${C.exercise}20` : C.inputBg,
                         border: `1px solid ${selectedMuscleGroup === cat.id ? C.exercise : C.outline}`,
                         color: selectedMuscleGroup === cat.id ? C.exercise : C.variant,
                       }}>
@@ -782,7 +845,7 @@ export default function Home() {
                           onChange={e => onChange(parseFloat(e.target.value) || 0)}
                           placeholder={placeholder}
                           className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                          style={{ background: "#2a2a2a", border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                          style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
                       </div>
                     ))}
                   </div>
@@ -850,7 +913,7 @@ export default function Home() {
                   <button key={p} onClick={() => setSummaryPeriod(p)}
                     className="px-2.5 py-1 rounded-lg font-label text-xs transition-all active:scale-90"
                     style={{
-                      background: summaryPeriod === p ? C.hydration : "#2a2a2a",
+                      background: summaryPeriod === p ? C.hydration : C.inputBg,
                       color: summaryPeriod === p ? "#001f24" : C.variant,
                     }}>
                     {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -985,7 +1048,7 @@ export default function Home() {
 
       {/* ── Floating bottom navigation ── */}
       <nav className="fixed bottom-4 left-4 right-4 z-40 rounded-2xl pb-safe"
-        style={{ background: "#1c1c1edd", backdropFilter: "blur(20px)", border: `1px solid ${C.outline}`, boxShadow: "0 8px 32px #00000080" }}>
+        style={{ background: C.navBg, backdropFilter: "blur(20px)", border: `1px solid ${C.outline}`, boxShadow: isDark ? "0 8px 32px #00000080" : "0 4px 24px rgba(0,0,0,0.12)" }}>
         <div className="flex items-stretch justify-around px-2 pt-2 pb-1">
           {NAV.map(({ id, emoji, label }) => {
             const isActive = activeTab === id;
