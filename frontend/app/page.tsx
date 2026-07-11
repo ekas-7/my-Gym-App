@@ -545,10 +545,10 @@ export default function Home() {
     <div className="min-h-screen flex flex-col items-center justify-center gap-10 px-5"
       style={{ background: C.bgHero }}>
 
-      {/* Theme toggle on sign-in screen */}
+      {/* Theme toggle on sign-in screen — pushed below status bar */}
       <button onClick={toggleTheme}
-        className="absolute top-5 right-5 w-10 h-10 rounded-full glass-card flex items-center justify-center active:scale-90 transition-transform"
-        style={{ color: C.variant }}>
+        className="absolute right-5 w-10 h-10 rounded-full glass-card flex items-center justify-center active:scale-90 transition-transform"
+        style={{ color: C.variant, top: "max(env(safe-area-inset-top), 1.25rem)" }}>
         {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
       </button>
 
@@ -607,7 +607,12 @@ export default function Home() {
 
       {/* ── Top app bar ── */}
       <header className="sticky top-0 z-30 px-5 py-3 flex items-center justify-between"
-        style={{ background: C.headerBg, backdropFilter: "blur(20px)", borderBottom: `1px solid ${C.outline}40` }}>
+        style={{
+          background: C.headerBg,
+          backdropFilter: "blur(20px)",
+          borderBottom: `1px solid ${C.outline}40`,
+          paddingTop: "max(env(safe-area-inset-top), 0.75rem)",
+        }}>
         <div className="flex items-center gap-3">
           <button onClick={handleSignOut} className="active:scale-90 transition-transform" aria-label="Sign out">
             {currentUser.photoURL

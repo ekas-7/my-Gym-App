@@ -144,10 +144,15 @@ html:not(.dark) .glass-card {
 .glow-green { box-shadow: 0 0 15px rgba(159, 251,   0, 0.25); }
 .glow-orange{ box-shadow: 0 0 15px rgba(255, 107,   0, 0.25); }
 
-/* ── Safe area for iOS notch ────────────────────────────────────────────────── */
+/* ── Safe area for iOS notch / Dynamic Island ──────────────────────────────── */
 
 .pb-safe {
   padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+
+/* Top safe area — use on sticky headers in standalone PWA mode */
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 0.75rem);
 }
 
 /* ── iOS HIG: Tab content fade transition ─────────────────────────────────── */

@@ -4,7 +4,7 @@
 //   - Network-first: API routes (need fresh data)
 //   - Stale-while-revalidate: Next.js pages
 
-const CACHE_VERSION = 'fittrack-v7';
+const CACHE_VERSION = 'fittrack-v8';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const FONT_CACHE    = `${CACHE_VERSION}-fonts`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
