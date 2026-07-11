@@ -274,6 +274,7 @@ export default function Home() {
   const [exerciseGoal,    setExerciseGoal]    = useState(500);
   const [todayWeight,     setTodayWeight]     = useState<number|null>(null);
   const [weightSaved,     setWeightSaved]     = useState(false);
+  const [weightRefresh,   setWeightRefresh]   = useState(0);
 
   /* app state */
   const [meals,       setMeals]       = useState<IMeal[]>([]);
@@ -881,7 +882,7 @@ export default function Home() {
                 const bmi   = calculateBMI(effWeight, userProfile.height!);
                 return (
                 <>
-                  <WeightGraph uid={currentUser.uid} days={30} targetWeight={userProfile.targetWeight} />
+                  <WeightGraph uid={currentUser.uid} days={30} targetWeight={userProfile.targetWeight} refreshKey={weightRefresh} />
                   <div className="glass-card rounded-xl p-4 space-y-4">
                     <div className="space-y-1.5">
                       <label className="font-label text-xs uppercase tracking-widest" style={{ color: C.variant }}>Weight (kg)</label>
@@ -931,6 +932,7 @@ export default function Home() {
                         await saveWeightLog(currentUser.uid, today, { date: today, weight: todayWeight, bodyFatPercentage: bf });
                         await updateLog({ weight: todayWeight, bodyFatPercentage: bf });
                         setWeightSaved(true);
+                        setWeightRefresh(k => k + 1);
                       }}>
                       <IconCheck size={15} className="inline mr-1.5" />{weightSaved ? "Saved!" : "Save Measurements"}
                     </button>
