@@ -662,7 +662,7 @@ export default function Home() {
       </div>
 
       {/* ── Tab content ── */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: "max(calc(env(safe-area-inset-bottom) + 7rem), 7rem)" }}>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
 
           {/* ── TODAY (Hydration + Nutrition + Body) ──────────────────────── */}
@@ -1139,30 +1139,28 @@ export default function Home() {
       {/* ── Floating bottom navigation ── */}
       <nav className="fixed bottom-4 left-4 right-4 z-40 rounded-2xl pb-safe"
         style={{ background: C.navBg, backdropFilter: "blur(20px)", border: `1px solid ${C.outline}`, boxShadow: isDark ? "0 8px 32px #00000080" : "0 4px 24px rgba(0,0,0,0.12)" }}>
-        <div className="flex items-stretch justify-around px-2 pt-2 pb-2">
+        <div className="flex items-center justify-around px-2 pt-1.5 pb-2">
           {NAV.map(({ id, Icon, label }) => {
             const isActive = activeTab === id;
             const accentColor = id === "train" ? C.exercise : id === "progress" ? C.nutrition : C.hydration;
             return (
-              /* iOS HIG: minimum 44×44pt touch target */
               <button key={id} onClick={() => setActiveTab(id)}
                 aria-label={`${label} tab`}
                 aria-pressed={isActive}
-                className="flex flex-col items-center justify-center gap-1 rounded-xl transition-all active:scale-90 relative"
-                style={{ minWidth: 56, minHeight: 52 }}>
-                {isActive && (
-                  <div className="absolute top-1 left-3 right-3 h-0.5 rounded-full" style={{ background: accentColor }} />
-                )}
-                <div className={`rounded-xl transition-all ${isActive ? "px-3 py-1" : ""}`}
-                  style={isActive ? { background: `${accentColor}18` } : {}}>
-                  <Icon
-                    size={22}
-                    style={{ color: isActive ? accentColor : C.variant }}
-                    className={`transition-all ${isActive ? "scale-110" : ""}`}
-                  />
-                </div>
-                <span className="font-label text-[11px] uppercase tracking-wide transition-all leading-none"
-                  style={{ color: isActive ? accentColor : C.variant }}>{label}</span>
+                className="flex flex-col items-center justify-center gap-1 rounded-xl transition-all active:scale-90"
+                style={{ minWidth: 72, minHeight: 48 }}>
+                <Icon
+                  size={22}
+                  style={{ color: isActive ? accentColor : C.variant }}
+                  className="transition-colors duration-200"
+                />
+                <span className="font-label text-[11px] uppercase tracking-wide leading-none transition-colors duration-200"
+                  style={{ color: isActive ? accentColor : C.variant }}>
+                  {label}
+                </span>
+                {/* Active dot indicator */}
+                <div className="h-[3px] w-4 rounded-full transition-all duration-200"
+                  style={{ background: isActive ? accentColor : "transparent" }} />
               </button>
             );
           })}
