@@ -235,6 +235,23 @@ html:not(.dark) .glass-overlay {
   to   { opacity: 1; transform: translateY(0);   }
 }
 
+/* ── Bottom-sheet drawer animations ─────────────────────────────────────────*/
+@keyframes sheetBackdropIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheetBackdropOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes sheetPanelIn  { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sheetPanelOut { from { transform: translateY(0); }   to { transform: translateY(100%); } }
+
+.sheet-backdrop           { animation: sheetBackdropIn 0.22s ease both; }
+.sheet-backdrop--closing  { animation: sheetBackdropOut 0.24s ease both; }
+.sheet-panel              { animation: sheetPanelIn 0.32s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.sheet-panel--closing     { animation: sheetPanelOut 0.26s cubic-bezier(0.32, 0.72, 0, 1) both; }
+
+@media (min-width: 640px) {
+  /* On larger screens the sheet is centered — fade+scale instead of slide */
+  @keyframes sheetPanelIn  { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  @keyframes sheetPanelOut { from { opacity: 1; transform: scale(1); }   to { opacity: 0; transform: scale(0.96); } }
+}
+
 /* ── Swipe-to-delete row (iOS trailing-swipe pattern) ───────────────────────*/
 .swipe-row             { position: relative; overflow: hidden; touch-action: pan-y; }
 .swipe-row__content    { will-change: transform; transition: transform 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94); }

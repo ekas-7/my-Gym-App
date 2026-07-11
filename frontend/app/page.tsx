@@ -285,6 +285,7 @@ export default function Home() {
 
   /* profile settings modal */
   const [showProfile,    setShowProfile]    = useState(false);
+  const [sheetClosing,   setSheetClosing]   = useState(false);
   const [profileSaving,  setProfileSaving]  = useState(false);
   const [pfHeight,        setPfHeight]        = useState("");
   const [pfAge,           setPfAge]           = useState("");
@@ -552,7 +553,13 @@ export default function Home() {
     setPfCalorieGoal(String(calorieGoal));
     setPfProteinGoal(String(proteinGoal));
     setPfExerciseGoal(String(exerciseGoal));
+    setSheetClosing(false);
     setShowProfile(true);
+  };
+
+  const closeProfile = () => {
+    setSheetClosing(true);
+    setTimeout(() => { setShowProfile(false); setSheetClosing(false); }, 240);
   };
 
   const saveProfileSettings = async () => {
@@ -572,7 +579,7 @@ export default function Home() {
     await saveProfile(currentUser.uid, update);
     await fetchUserProfile(currentUser.uid);
     setProfileSaving(false);
-    setShowProfile(false);
+    closeProfile();
   };
 
   /* ─── Splash / sign-in ───────────────────────────────────────────────────────*/
@@ -1228,10 +1235,10 @@ export default function Home() {
 
       {/* ── Profile settings sheet ── */}
       {showProfile && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+        <div className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center sheet-backdrop${sheetClosing ? " sheet-backdrop--closing" : ""}`}
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-          onClick={() => setShowProfile(false)}>
-          <div className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl glass-overlay overflow-y-auto"
+          onClick={closeProfile}>
+          <div className={`w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl glass-overlay overflow-y-auto sheet-panel${sheetClosing ? " sheet-panel--closing" : ""}`}
             style={{ maxHeight: "88vh", border: `1px solid ${C.outlineVar}`, paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}
             onClick={e => e.stopPropagation()}>
             {/* header */}
@@ -1246,7 +1253,7 @@ export default function Home() {
                   <div className="font-label text-[11px]" style={{ color: C.variant }}>{currentUser.email}</div>
                 </div>
               </div>
-              <button onClick={() => setShowProfile(false)} className="w-9 h-9 rounded-full flex items-center justify-center glass-card active:scale-90 transition-transform" aria-label="Close profile">
+              <button onClick={closeProfile} className="w-9 h-9 rounded-full flex items-center justify-center glass-card active:scale-90 transition-transform" aria-label="Close profile">
                 <IconX size={16} style={{ color: C.variant }} />
               </button>
             </div>
@@ -1376,10 +1383,10 @@ export default function Home() {
       {/* ── iOS install banner ── */}
       <InstallPWABanner />
 
-      {/* ── Floating bottom navigation ── */}
-      <nav className="fixed bottom-4 left-4 right-4 z-40 rounded-2xl pb-safe glass-overlay"
+      {/* ── Floating bottom navigation (centered compact pill) ── */}
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 rounded-2xl pb-safe glass-overlay"
         style={{ boxShadow: isDark ? "0 8px 40px rgba(0,0,0,0.6)" : "0 4px 24px rgba(0,0,0,0.10)", border: `1px solid ${C.outlineVar}` }}>
-        <div className="flex items-center justify-around px-3 py-2">
+        <div className="flex items-center gap-1 px-2 py-2">
           {NAV.map(({ id, Icon, label }) => {
             const isActive = activeTab === id;
             const accentColor = id === "train" ? C.exercise : id === "progress" ? C.nutrition : C.hydration;
@@ -1388,7 +1395,7 @@ export default function Home() {
                 aria-label={`${label} tab`}
                 aria-pressed={isActive}
                 className="flex flex-col items-center justify-center gap-1 rounded-xl transition-all active:scale-90"
-                style={{ minWidth: 72, minHeight: 52 }}>
+                style={{ width: 76, minHeight: 52 }}>
                 <Icon size={22} style={{ color: isActive ? accentColor : C.variant }} className="transition-colors duration-150" />
                 <span className="font-label text-[11px] uppercase tracking-wider leading-none transition-colors duration-150"
                   style={{ color: isActive ? accentColor : C.variant }}>
