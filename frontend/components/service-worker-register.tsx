@@ -7,6 +7,13 @@ export function ServiceWorkerRegister() {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
 
+    let reloading = false;
+    const doReload = () => {
+      if (reloading) return;
+      reloading = true;
+      window.location.reload();
+    };
+
     const registerSW = async () => {
       try {
         const registration = await navigator.serviceWorker.register("/sw.js", {
@@ -14,19 +21,18 @@ export function ServiceWorkerRegister() {
           updateViaCache: "none", // always fetch sw.js fresh from network
         });
 
-        // When the new SW takes control, reload for fresh assets.
-        // controllerchange is the most reliable signal on iOS Safari PWA.
-        let reloading = false;
-        navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (reloading) return;
-          reloading = true;
-          window.location.reload();
+        // Method 1: SW posts SW_UPDATED message on activate (most reliable on iOS)
+        navigator.serviceWorker.addEventListener("message", (e) => {
+          if (e.data?.type === "SW_UPDATED") doReload();
         });
 
-        // Also poll for updates every 30 s while the app is open
+        // Method 2: controllerchange fallback
+        navigator.serviceWorker.addEventListener("controllerchange", doReload);
+
+        // Poll for updates every 30s while app is open
         setInterval(() => registration.update(), 30_000);
 
-        // Trigger an immediate update check on registration
+        // Immediate update check on mount
         registration.update();
       } catch (err) {
         console.warn("SW registration failed:", err);

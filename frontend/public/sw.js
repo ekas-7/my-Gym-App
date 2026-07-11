@@ -4,7 +4,7 @@
 //   - Network-first: API routes (need fresh data)
 //   - Stale-while-revalidate: Next.js pages
 
-const CACHE_VERSION = 'fittrack-v6';
+const CACHE_VERSION = 'fittrack-v7';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const FONT_CACHE    = `${CACHE_VERSION}-fonts`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
@@ -30,15 +30,23 @@ self.addEventListener('install', event => {
 // ─── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(k => k.startsWith('fittrack-') && !k.startsWith(CACHE_VERSION))
-          .map(k => caches.delete(k))
+    caches.keys()
+      .then(keys =>
+        Promise.all(
+          keys
+            .filter(k => k.startsWith('fittrack-') && !k.startsWith(CACHE_VERSION))
+            .map(k => caches.delete(k))
+        )
       )
-    )
+      .then(() => self.clients.claim())
+      .then(() =>
+        // Notify all open clients to reload so they pick up the new assets.
+        // More reliable than controllerchange on iOS Safari PWA.
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients =>
+          clients.forEach(client => client.postMessage({ type: 'SW_UPDATED', version: CACHE_VERSION }))
+        )
+      )
   );
-  self.clients.claim();
 });
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
