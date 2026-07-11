@@ -21,6 +21,7 @@ import { ExerciseHistory } from "@/components/exercise-history";
 import { WeightGraph } from "@/components/weight-graph";
 import { cardioExercises, weightTrainingCategories } from "@/lib/exercises";
 import { Loader2 } from "lucide-react";
+import { InstallPWABanner } from "@/components/install-pwa-banner";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
    Kinetic Performance palette (from Stitch project 4530245392740715731)
@@ -276,8 +277,13 @@ export default function Home() {
   const [exerciseCategory,       setExerciseCategory]      = useState<"cardio"|"weight-training">("cardio");
   const [selectedMuscleGroup,    setSelectedMuscleGroup]   = useState<"chest"|"back"|"shoulders"|"biceps"|"triceps"|"abs"|"legs">("chest");
 
-  /* tab persistence */
-  useEffect(() => { const s = localStorage.getItem("fitActiveTab"); if (s) setActiveTab(s); }, []);
+  /* tab persistence + shortcut URL param (?tab=hydration) */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    const saved    = localStorage.getItem("fitActiveTab");
+    setActiveTab(tabParam || saved || "hydration");
+  }, []);
   useEffect(() => { if (isMounted) localStorage.setItem("fitActiveTab", activeTab); }, [activeTab, isMounted]);
 
   /* ─── Data fetching ─────────────────────────────────────────────────────────*/
@@ -1045,6 +1051,9 @@ export default function Home() {
 
         </Tabs>
       </div>
+
+      {/* ── iOS install banner ── */}
+      <InstallPWABanner />
 
       {/* ── Floating bottom navigation ── */}
       <nav className="fixed bottom-4 left-4 right-4 z-40 rounded-2xl pb-safe"
