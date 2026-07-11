@@ -51,7 +51,7 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
 
         <div className="space-y-3">
           {exercises.map((exercise) => (
-            <Card key={exercise._id} className="p-4 hover:shadow-md transition-shadow">
+            <Card key={exercise.id} className="p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -161,7 +161,7 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => exercise._id && onDelete(exercise._id)}
+                  onClick={() => exercise.id && onDelete(exercise.id)}
                   className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50 shrink-0"
                 >
                   <Trash2 className="h-4 w-4" />

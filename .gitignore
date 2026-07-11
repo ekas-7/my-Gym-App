@@ -1,0 +1,11 @@
+# Editor
+.cursor/
+
+# Root-level Firebase CLI artifacts (canonical config lives in frontend/)
+/firebase.json
+/.firebaserc
+/firestore.rules
+/firestore.indexes.json
+
+# OS
+.DS_Store

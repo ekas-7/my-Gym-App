@@ -56,7 +56,7 @@ export function MealHistory({ meals, onDelete }: MealHistoryProps) {
 
         <div className="space-y-2">
           {meals.map((meal) => (
-            <Card key={meal._id} className="p-3">
+            <Card key={meal.id} className="p-3">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -109,7 +109,7 @@ export function MealHistory({ meals, onDelete }: MealHistoryProps) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => meal._id && onDelete(meal._id)}
+                  onClick={() => meal.id && onDelete(meal.id)}
                   className="text-red-600 hover:text-red-700 ml-2"
                 >
                   <Trash2 className="h-4 w-4" />

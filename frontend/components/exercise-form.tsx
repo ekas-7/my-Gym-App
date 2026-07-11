@@ -178,7 +178,7 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
         const totalReps = exercise.sets.reduce((total: number, set: ISet) => total + set.reps, 0);
 
         return (
-          <Card key={exercise._id} className="p-4">
+          <Card key={exercise.id} className="p-4">
             <div className="flex items-start justify-between mb-2">
               <div>
                 <h4 className="font-semibold">{exercise.name}</h4>
@@ -194,7 +194,7 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => exercise._id && onDelete(exercise._id)}
+                onClick={() => exercise.id && onDelete(exercise.id)}
                 className="text-red-600 hover:text-red-700"
               >
                 <Trash2 className="h-4 w-4" />

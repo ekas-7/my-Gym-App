@@ -1,13 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { User, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { auth, googleProvider } from "@/lib/firebase";
+import {
+  getProfile,
+  saveProfile,
+  getTodayLog,
+  saveLog,
+  getMeals,
+  getMealsByPeriod,
+  addMeal,
+  deleteMeal,
+  getExercises,
+  getExercisesByPeriod,
+  addExercise,
+  deleteExercise,
+  saveWeightLog,
+  getStreakLogs,
+} from "@/lib/firestore";
+import { IFitnessLog, IMeal, IExercise, IUserProfile } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Droplet, Utensils, Dumbbell, TrendingUp, Target, Calendar as CalendarIcon, Heart, Scale, Sparkles, Download, FileText, Loader2, Brain, Award, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  Droplet, Utensils, Dumbbell, TrendingUp, Target,
+  Calendar as CalendarIcon, Heart, Scale, Sparkles,
+  Download, FileText, Loader2, Brain, Award, AlertCircle,
+  CheckCircle2, LogOut,
+} from "lucide-react";
 import { ExerciseItem } from "@/components/exercise-item";
 import { CustomizableExerciseItem } from "@/components/customizable-exercise-item";
 import { CardioItem } from "@/components/cardio-item";
@@ -20,9 +43,8 @@ import { MealHistory, MealTypeSelect } from "@/components/meal-history";
 import { ExerciseHistory } from "@/components/exercise-history";
 import { WeightGraph } from "@/components/weight-graph";
 import { cardioExercises, weightTrainingCategories } from "@/lib/exercises";
-import { IFitnessLog } from "@/models/FitnessLog";
-import { IMeal } from "@/models/Meal";
-import { IExercise } from "@/models/Exercise";
+
+// ─── Local interfaces ────────────────────────────────────────────────────────
 
 interface SummaryData {
   period: string;
@@ -43,39 +65,108 @@ interface AIAnalysis {
   motivationalMessage: string;
 }
 
-interface UserProfile {
-  currentWeight: number;
-  targetWeight: number;
-  bodyFatPercentage: number;
-  skeletalMuscle: number;
-  visceralFatIndex: number;
-  bmr: number;
-  activityLevel: string;
-  goalType: string;
-  weeklyWeightChangeGoal: number;
-  dailyCalorieTarget: number;
-  dailyProteinTarget: number;
-  waterGoal: number;
-  exerciseGoal: number;
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function todayMidnight(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
+function computeStreakStatus(
+  water: number, waterGoal: number,
+  cal: number, calGoal: number,
+  exercise: number, exerciseGoal: number,
+): { goalsCompleted: number; isStreakDay: boolean } {
+  const waterOk = water >= waterGoal;
+  const caloriesOk = cal >= calGoal * 0.9;
+  const exerciseOk = exercise >= exerciseGoal;
+  const goalsCompleted = [waterOk, caloriesOk, exerciseOk].filter(Boolean).length;
+  return { goalsCompleted, isStreakDay: goalsCompleted >= 3 };
+}
+
+function computeSummaryFromLogs(
+  logs: IFitnessLog[],
+  period: 'day' | 'week' | 'month' | 'year',
+): SummaryData {
+  const now = new Date();
+  let startDate = new Date(now);
+
+  if (period === 'day') {
+    startDate.setHours(0, 0, 0, 0);
+  } else if (period === 'week') {
+    const dow = now.getDay();
+    startDate.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
+    startDate.setHours(0, 0, 0, 0);
+  } else if (period === 'month') {
+    startDate.setDate(1);
+    startDate.setHours(0, 0, 0, 0);
+  } else {
+    startDate = new Date(now.getFullYear(), 0, 1);
+  }
+
+  const filtered = logs.filter((l) => new Date(l.date) >= startDate);
+
+  const totalWater = filtered.reduce((s, l) => s + (l.waterLiters || 0), 0);
+  const totalWaterGoal = filtered.reduce((s, l) => s + (l.waterGoal || 4), 0) || 4;
+  const totalCal = filtered.reduce((s, l) => s + (l.calories || 0), 0);
+  const totalCalGoal = filtered.reduce((s, l) => s + (l.calorieGoal || 2000), 0) || 2000;
+  const totalEx = filtered.reduce((s, l) => s + (l.exerciseCalories || 0), 0);
+  const totalExGoal = filtered.reduce((s, l) => s + (l.exerciseGoal || 500), 0) || 500;
+
+  return {
+    period,
+    water: {
+      consumed: totalWater,
+      goal: filtered.length > 0 ? totalWaterGoal / filtered.length : 4,
+      percentage: Math.round((totalWater / Math.max(totalWaterGoal, 0.01)) * 100),
+    },
+    calories: {
+      consumed: totalCal,
+      goal: filtered.length > 0 ? totalCalGoal / filtered.length : 2000,
+      percentage: Math.round((totalCal / Math.max(totalCalGoal, 1)) * 100),
+    },
+    exercise: {
+      calories: totalEx,
+      goal: filtered.length > 0 ? totalExGoal / filtered.length : 500,
+      percentage: Math.round((totalEx / Math.max(totalExGoal, 1)) * 100),
+    },
+    totalDays: Math.max(filtered.length, 1),
+  };
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function Home() {
-  // Date state - fix hydration issue
+  // Auth
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Date
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [isMounted, setIsMounted] = useState(false);
-  
+
   useEffect(() => {
     setDate(new Date());
     setIsMounted(true);
   }, []);
 
-  // Hydration state (in liters)
-  const [waterIntake, setWaterIntake] = useState(0);
-  const [dailyWaterGoal, setDailyWaterGoal] = useState(4); // Will be updated from profile
+  // Auth observer
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+    });
+    return unsub;
+  }, []);
 
-  // Diet state
+  // Hydration
+  const [waterIntake, setWaterIntake] = useState(0);
+  const [dailyWaterGoal, setDailyWaterGoal] = useState(4);
+
+  // Diet
   const [calories, setCalories] = useState(0);
-  const [calorieGoal, setCalorieGoal] = useState(2000); // Will be updated from profile
+  const [calorieGoal, setCalorieGoal] = useState(2000);
   const [carbs, setCarbs] = useState(0);
   const [carbsGoal, setCarbsGoal] = useState(250);
   const [fats, setFats] = useState(0);
@@ -88,498 +179,465 @@ export default function Home() {
   const [mealType, setMealType] = useState<string>('other');
   const [meals, setMeals] = useState<IMeal[]>([]);
 
-  // Exercise state
+  // Exercise
   const [exerciseCalories, setExerciseCalories] = useState(0);
-  const [exerciseGoal, setExerciseGoal] = useState(500); // Will be updated from profile
+  const [exerciseGoal, setExerciseGoal] = useState(500);
   const [exerciseDescription, setExerciseDescription] = useState('');
   const [isAnalyzingExercise, setIsAnalyzingExercise] = useState(false);
   const [exerciseAnalysisError, setExerciseAnalysisError] = useState('');
   const [exercises, setExercises] = useState<IExercise[]>([]);
 
-  // User profile state
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  // Profile
+  const [userProfile, setUserProfile] = useState<IUserProfile | null>(null);
 
-  // Daily weight tracking
+  // Weight
   const [todayWeight, setTodayWeight] = useState<number | null>(null);
   const [todayBodyFat, setTodayBodyFat] = useState<number | null>(null);
+  const [weightSaved, setWeightSaved] = useState(false);
 
-  // Summary period state
+  // Summary
   const [summaryPeriod, setSummaryPeriod] = useState<'day' | 'week' | 'month' | 'year'>('day');
-  
-  // Summary data from MongoDB
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
-  
-  // AI Analysis state
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
+
+  // AI
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
-  
-  // Loading state
+
+  // Loading
   const [isLoading, setIsLoading] = useState(true);
 
-  // Exercise tracking state
+  // Exercise tracking
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [exerciseCategory, setExerciseCategory] = useState<'cardio' | 'weight-training'>('cardio');
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<'chest' | 'back' | 'shoulders' | 'biceps' | 'triceps' | 'abs' | 'legs'>('chest');
 
-  // Streak tracking state
+  // Streak
   const [streakLogs, setStreakLogs] = useState<IFitnessLog[]>([]);
 
-  // Active tab state with persistence
+  // Tab persistence
   const [activeTab, setActiveTab] = useState<string>('hydration');
 
-  // Load active tab from localStorage on mount
   useEffect(() => {
-    const savedTab = localStorage.getItem('fitnessAppActiveTab');
-    if (savedTab) {
-      setActiveTab(savedTab);
-    }
+    const saved = localStorage.getItem('fitnessAppActiveTab');
+    if (saved) setActiveTab(saved);
   }, []);
 
-  // Save active tab to localStorage when it changes
   useEffect(() => {
-    if (isMounted) {
-      localStorage.setItem('fitnessAppActiveTab', activeTab);
-    }
+    if (isMounted) localStorage.setItem('fitnessAppActiveTab', activeTab);
   }, [activeTab, isMounted]);
 
-  // Fetch today's fitness data on mount
-  useEffect(() => {
-    fetchTodayData();
-    fetchUserProfile();
-    fetchStreakData();
-    fetchMeals();
-    fetchExercises();
-  }, []);
+  // ─── Data fetching ──────────────────────────────────────────────────────────
 
-  // Fetch summary data when period changes
-  useEffect(() => {
-    fetchSummaryData();
-    // Clear AI analysis when period changes so user knows to re-analyze
-    setAiAnalysis(null);
-  }, [summaryPeriod]);
-
-  // Daily reset check - refresh data when day changes
-  useEffect(() => {
-    if (!isMounted) return;
-
-    // Store the current date
-    let currentDate = new Date().toDateString();
-
-    // Check every minute if the day has changed
-    const checkDayChange = setInterval(() => {
-      const newDate = new Date().toDateString();
-      
-      if (newDate !== currentDate) {
-        console.log('Day changed - refreshing fitness data...');
-        currentDate = newDate;
-        
-        // Refresh all data for the new day
-        fetchTodayData();
-        fetchMeals();
-        fetchExercises();
-        fetchStreakData();
-        fetchSummaryData();
-        
-        // Update the date state
-        setDate(new Date());
-      }
-    }, 60000); // Check every minute
-
-    // Also set up a timer to specifically trigger at midnight
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    const msUntilMidnight = tomorrow.getTime() - now.getTime();
-
-    const midnightTimer = setTimeout(() => {
-      console.log('Midnight reached - refreshing fitness data...');
-      fetchTodayData();
-      fetchMeals();
-      fetchExercises();
-      fetchStreakData();
-      fetchSummaryData();
-      setDate(new Date());
-      
-      // Set up recurring midnight refresh (every 24 hours)
-      const recurringMidnightTimer = setInterval(() => {
-        console.log('Midnight reached - refreshing fitness data...');
-        fetchTodayData();
-        fetchMeals();
-        fetchExercises();
-        fetchStreakData();
-        fetchSummaryData();
-        setDate(new Date());
-      }, 24 * 60 * 60 * 1000); // Every 24 hours
-
-      return () => clearInterval(recurringMidnightTimer);
-    }, msUntilMidnight);
-
-    // Cleanup on unmount
-    return () => {
-      clearInterval(checkDayChange);
-      clearTimeout(midnightTimer);
-    };
-  }, [isMounted]);
-
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async (uid: string) => {
     try {
-      const response = await fetch('/api/profile');
-      const result = await response.json();
-      
-      if (result.success) {
-        setUserProfile(result.data);
-        setDailyWaterGoal(result.data.waterGoal);
-        setCalorieGoal(result.data.dailyCalorieTarget);
-        setExerciseGoal(result.data.exerciseGoal);
+      const profile = await getProfile(uid);
+      if (profile) {
+        setUserProfile(profile);
+        setDailyWaterGoal(profile.waterGoal || 4);
+        setCalorieGoal(profile.dailyCalorieTarget || 2000);
+        setExerciseGoal(profile.exerciseGoal || 500);
+        if (profile.dailyProteinTarget) setProteinGoal(profile.dailyProteinTarget);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }
-  };
+  }, []);
 
-  const fetchTodayData = async () => {
+  const fetchTodayData = useCallback(async (uid: string) => {
     try {
-      const response = await fetch('/api/fitness');
-      const result = await response.json();
-      
-      if (result.success) {
-        setWaterIntake(result.data.waterLiters);
-        setCalories(result.data.calories);
-        setCarbs(result.data.carbs || 0);
-        setFats(result.data.fats || 0);
-        setProtein(result.data.protein || 0);
-        setExerciseCalories(result.data.exerciseCalories);
-        setTodayWeight(result.data.weight || null);
-        setTodayBodyFat(result.data.bodyFatPercentage || null);
+      const log = await getTodayLog(uid, todayMidnight());
+      if (log) {
+        setWaterIntake(log.waterLiters || 0);
+        setExerciseCalories(log.exerciseCalories || 0);
+        setTodayWeight(log.weight ?? null);
+        setTodayBodyFat(log.bodyFatPercentage ?? null);
       }
     } catch (error) {
       console.error('Error fetching today\'s data:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchSummaryData = async () => {
-    setIsSummaryLoading(true);
+  const fetchMeals = useCallback(async (uid: string) => {
     try {
-      const response = await fetch(`/api/fitness/summary?period=${summaryPeriod}`);
-      const result = await response.json();
-      
-      if (result.success) {
-        setSummaryData(result.data);
-      }
-    } catch (error) {
-      console.error('Error fetching summary:', error);
-    } finally {
-      setIsSummaryLoading(false);
-    }
-  };
-
-  const fetchStreakData = async () => {
-    try {
-      const response = await fetch('/api/fitness/streak?days=90');
-      const result = await response.json();
-      
-      if (result.success) {
-        setStreakLogs(result.data.logs);
-      }
-    } catch (error) {
-      console.error('Error fetching streak data:', error);
-    }
-  };
-
-  // Fetch today's meals
-  const fetchMeals = async () => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`/api/meals?date=${today}&getTotals=true`);
-      const result = await response.json();
-      if (result.success) {
-        setMeals(result.data);
-        if (result.totals) {
-          setCalories(result.totals.totalCalories);
-          setCarbs(result.totals.totalCarbs);
-          setFats(result.totals.totalFats);
-          setProtein(result.totals.totalProtein);
-        }
-      }
+      const todayMeals = await getMeals(uid, todayMidnight());
+      setMeals(todayMeals);
+      // Compute totals from meals
+      const totalCal = todayMeals.reduce((s, m) => s + m.calories, 0);
+      const totalCarbs = todayMeals.reduce((s, m) => s + m.carbs, 0);
+      const totalFats = todayMeals.reduce((s, m) => s + m.fats, 0);
+      const totalProtein = todayMeals.reduce((s, m) => s + m.protein, 0);
+      setCalories(totalCal);
+      setCarbs(totalCarbs);
+      setFats(totalFats);
+      setProtein(totalProtein);
     } catch (error) {
       console.error('Error fetching meals:', error);
     }
-  };
+  }, []);
 
-  // Fetch today's exercises
-  const fetchExercises = async () => {
+  const fetchExercises = useCallback(async (uid: string, currentExerciseGoal?: number) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`/api/exercises?date=${today}`);
-      const result = await response.json();
-      if (result.success) {
-        setExercises(result.data);
-        // Calculate total calories from exercises
-        const totalCalories = result.data.reduce((sum: number, ex: IExercise) => {
-          return sum + (ex.caloriesBurned || 0);
-        }, 0);
-        setExerciseCalories(totalCalories);
-        // Also update the fitness log
-        updateFitnessData({ exerciseCalories: totalCalories });
-      }
+      const todayExercises = await getExercises(uid, todayMidnight());
+      setExercises(todayExercises);
+      const totalCal = todayExercises.reduce((s, e) => s + (e.caloriesBurned || 0), 0);
+      setExerciseCalories(totalCal);
+      return totalCal;
     } catch (error) {
       console.error('Error fetching exercises:', error);
+      return 0;
     }
-  };
+  }, []);
 
-  // Delete meal
-  const handleDeleteMeal = async (id: string) => {
+  const fetchStreakData = useCallback(async (uid: string) => {
     try {
-      const response = await fetch(`/api/meals?id=${id}`, { method: 'DELETE' });
-      const result = await response.json();
-      if (result.success) {
-        fetchMeals(); // Refresh meals to recalculate totals
-      }
+      const logs = await getStreakLogs(uid, 90);
+      setStreakLogs(logs);
+      return logs;
     } catch (error) {
-      console.error('Error deleting meal:', error);
+      console.error('Error fetching streak data:', error);
+      return [];
     }
-  };
+  }, []);
 
-  // Delete exercise
-  const handleDeleteExercise = async (id: string) => {
-    try {
-      const response = await fetch(`/api/exercises?id=${id}`, { method: 'DELETE' });
-      const result = await response.json();
-      if (result.success) {
-        fetchExercises(); // Refresh exercises to recalculate totals
+  const fetchSummaryData = useCallback(
+    async (uid: string, period: 'day' | 'week' | 'month' | 'year') => {
+      setIsSummaryLoading(true);
+      try {
+        const logs = await getStreakLogs(uid, period === 'year' ? 365 : period === 'month' ? 31 : period === 'week' ? 7 : 1);
+        const summary = computeSummaryFromLogs(logs, period);
+        setSummaryData(summary);
+      } catch (error) {
+        console.error('Error computing summary:', error);
+      } finally {
+        setIsSummaryLoading(false);
       }
-    } catch (error) {
-      console.error('Error deleting exercise:', error);
-    }
-  };
+    },
+    []
+  );
 
-  const updateFitnessData = async (data: { 
-    waterLiters?: number; 
-    calories?: number; 
+  // Load all data once user is authenticated
+  useEffect(() => {
+    if (!currentUser) return;
+    const uid = currentUser.uid;
+    setIsLoading(true);
+    Promise.all([
+      fetchUserProfile(uid),
+      fetchTodayData(uid),
+      fetchStreakData(uid),
+      fetchMeals(uid),
+      fetchExercises(uid),
+    ]);
+  }, [currentUser, fetchUserProfile, fetchTodayData, fetchStreakData, fetchMeals, fetchExercises]);
+
+  // Recompute summary when period changes
+  useEffect(() => {
+    if (!currentUser) return;
+    fetchSummaryData(currentUser.uid, summaryPeriod);
+    setAiAnalysis(null);
+  }, [summaryPeriod, currentUser, fetchSummaryData]);
+
+  // Midnight day-change reset
+  useEffect(() => {
+    if (!isMounted || !currentUser) return;
+
+    let currentDateStr = new Date().toDateString();
+    const refresh = () => {
+      if (!currentUser) return;
+      const uid = currentUser.uid;
+      fetchTodayData(uid);
+      fetchMeals(uid);
+      fetchExercises(uid);
+      fetchStreakData(uid);
+      fetchSummaryData(uid, summaryPeriod);
+      setDate(new Date());
+    };
+
+    const intervalId = setInterval(() => {
+      const newDate = new Date().toDateString();
+      if (newDate !== currentDateStr) {
+        currentDateStr = newDate;
+        refresh();
+      }
+    }, 60000);
+
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const ms = tomorrow.getTime() - now.getTime();
+
+    const midnightTimer = setTimeout(() => {
+      refresh();
+      const recurringId = setInterval(refresh, 24 * 60 * 60 * 1000);
+      return () => clearInterval(recurringId);
+    }, ms);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(midnightTimer);
+    };
+  }, [isMounted, currentUser, summaryPeriod, fetchTodayData, fetchMeals, fetchExercises, fetchStreakData, fetchSummaryData]);
+
+  // ─── Core update function ────────────────────────────────────────────────────
+
+  const updateFitnessData = async (data: {
+    waterLiters?: number;
+    calories?: number;
     carbs?: number;
     fats?: number;
     protein?: number;
-    exerciseCalories?: number; 
-    weight?: number; 
+    exerciseCalories?: number;
+    weight?: number;
     bodyFatPercentage?: number;
   }) => {
+    if (!currentUser) return;
+    const uid = currentUser.uid;
     try {
-      // Update the data - backend will calculate streak status automatically
-      await fetch('/api/fitness', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+      const today = todayMidnight();
+
+      const updatedWater = data.waterLiters ?? waterIntake;
+      const updatedCal = data.calories ?? calories;
+      const updatedEx = data.exerciseCalories ?? exerciseCalories;
+
+      const { goalsCompleted, isStreakDay } = computeStreakStatus(
+        updatedWater, dailyWaterGoal,
+        updatedCal, calorieGoal,
+        updatedEx, exerciseGoal,
+      );
+
+      await saveLog(uid, today, {
+        waterLiters: updatedWater,
+        waterGoal: dailyWaterGoal,
+        calories: updatedCal,
+        calorieGoal,
+        carbs: data.carbs ?? carbs,
+        carbsGoal,
+        fats: data.fats ?? fats,
+        fatsGoal,
+        protein: data.protein ?? protein,
+        proteinGoal,
+        exerciseCalories: updatedEx,
+        exerciseGoal,
+        exercises: [],
+        weight: data.weight,
+        bodyFatPercentage: data.bodyFatPercentage,
+        goalsCompleted,
+        totalGoals: 3,
+        isStreakDay,
+        date: today,
       });
-      
-      // Refresh all data
-      fetchSummaryData();
-      fetchStreakData();
-      
-      // Update profile if weight or body fat changed
-      if (userProfile && (data.weight !== undefined || data.bodyFatPercentage !== undefined)) {
-        const profileUpdate: Record<string, number> = {};
-        if (data.weight !== undefined) {
-          profileUpdate.currentWeight = data.weight;
-        }
-        if (data.bodyFatPercentage !== undefined) {
-          profileUpdate.bodyFatPercentage = data.bodyFatPercentage;
-        }
-        
-        await fetch('/api/profile', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(profileUpdate),
-        });
-        fetchUserProfile();
+
+      // Refresh streak/summary
+      fetchStreakData(uid);
+      fetchSummaryData(uid, summaryPeriod);
+
+      // Sync profile if weight changed
+      if (data.weight !== undefined || data.bodyFatPercentage !== undefined) {
+        const profileUpdate: Partial<IUserProfile> = {};
+        if (data.weight !== undefined) profileUpdate.currentWeight = data.weight;
+        if (data.bodyFatPercentage !== undefined) profileUpdate.bodyFatPercentage = data.bodyFatPercentage;
+        await saveProfile(uid, profileUpdate);
+        fetchUserProfile(uid);
       }
     } catch (error) {
       console.error('Error updating fitness data:', error);
     }
   };
 
+  // ─── Water ──────────────────────────────────────────────────────────────────
+
   const addWater = () => {
-    const newValue = waterIntake + 0.25; // Add 250ml (0.25L) - don't cap at goal
-    setWaterIntake(newValue);
-    updateFitnessData({ waterLiters: newValue });
+    const next = waterIntake + 0.25;
+    setWaterIntake(next);
+    updateFitnessData({ waterLiters: next });
   };
 
   const removeWater = () => {
-    const newValue = Math.max(waterIntake - 0.25, 0); // Remove 250ml (0.25L)
-    setWaterIntake(newValue);
-    updateFitnessData({ waterLiters: newValue });
+    const next = Math.max(waterIntake - 0.25, 0);
+    setWaterIntake(next);
+    updateFitnessData({ waterLiters: next });
   };
-  
+
+  // ─── Meals ──────────────────────────────────────────────────────────────────
+
   const analyzeFood = async () => {
-    if (!foodDescription.trim()) {
+    if (!foodDescription.trim() || !currentUser) {
       setAnalysisError('Please enter a food description');
       return;
     }
-
     setIsAnalyzing(true);
     setAnalysisError('');
-
     try {
-      // First, analyze the food with AI
-      const response = await fetch('/api/diet/parse', {
+      const res = await fetch('/api/diet/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ foodDescription }),
       });
-
-      const result = await response.json();
+      const result = await res.json();
 
       if (result.success) {
         const { calories: cal, carbs: c, fats: f, protein: p } = result.data;
-
-        // Save to meals collection
-        const mealResponse = await fetch('/api/meals', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            description: foodDescription,
-            mealType: mealType,
-            calories: cal,
-            carbs: c,
-            fats: f,
-            protein: p,
-            isAIAnalyzed: true,
-            date: new Date(),
-            timestamp: new Date(),
-          }),
+        await addMeal(currentUser.uid, {
+          description: foodDescription,
+          mealType: mealType as IMeal['mealType'],
+          calories: cal,
+          carbs: c,
+          fats: f,
+          protein: p,
+          isAIAnalyzed: true,
+          date: new Date(),
+          timestamp: new Date(),
         });
 
-        const mealResult = await mealResponse.json();
-        
-        if (mealResult.success) {
-          // Update totals
-          const newCalories = calories + cal;
-          const newCarbs = carbs + c;
-          const newFats = fats + f;
-          const newProtein = protein + p;
-
-          setCalories(newCalories);
-          setCarbs(newCarbs);
-          setFats(newFats);
-          setProtein(newProtein);
-
-          // Update FitnessLog for streak tracking
-          updateFitnessData({ 
-            calories: newCalories,
-            carbs: newCarbs,
-            fats: newFats,
-            protein: newProtein,
-          });
-
-          // Refresh meal history
-          fetchMeals();
-          setFoodDescription('');
-        } else {
-          setAnalysisError('Failed to save meal to database');
-        }
+        await fetchMeals(currentUser.uid);
+        // Update fitness log with new totals (fetchMeals updates state)
+        const newCal = calories + cal;
+        const newCarbs = carbs + c;
+        const newFats = fats + f;
+        const newProtein = protein + p;
+        updateFitnessData({ calories: newCal, carbs: newCarbs, fats: newFats, protein: newProtein });
+        setFoodDescription('');
       } else {
         setAnalysisError(result.error || 'Failed to analyze food');
       }
-    } catch (error) {
-      console.error('Error analyzing food:', error);
+    } catch {
       setAnalysisError('Network error. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
   };
-  
+
+  const handleDeleteMeal = async (id: string) => {
+    if (!currentUser) return;
+    try {
+      await deleteMeal(currentUser.uid, id);
+      await fetchMeals(currentUser.uid);
+      updateFitnessData({ calories, carbs, fats, protein });
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+    }
+  };
+
+  // ─── Exercises ──────────────────────────────────────────────────────────────
+
   const analyzeExercise = async () => {
-    if (!exerciseDescription.trim()) {
+    if (!exerciseDescription.trim() || !currentUser) {
       setExerciseAnalysisError('Please enter an exercise description');
       return;
     }
-
     setIsAnalyzingExercise(true);
     setExerciseAnalysisError('');
-
     try {
-      // First, analyze the exercise with AI
-      const response = await fetch('/api/exercises/parse', {
+      const res = await fetch('/api/exercises/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ exerciseDescription }),
       });
-
-      const result = await response.json();
+      const result = await res.json();
 
       if (result.success) {
-        const exerciseData = result.data;
-
-        // Create sets array for weight training
-        let setsArray = [];
-        if (exerciseData.category === 'weight-training' && exerciseData.sets && exerciseData.reps) {
-          for (let i = 1; i <= exerciseData.sets; i++) {
-            setsArray.push({
-              setNumber: i,
-              weight: exerciseData.weight || 0,
-              reps: exerciseData.reps,
-              completed: true,
-            });
+        const ex = result.data;
+        const setsArray = [];
+        if (ex.category === 'weight-training' && ex.sets && ex.reps) {
+          for (let i = 1; i <= ex.sets; i++) {
+            setsArray.push({ setNumber: i, weight: ex.weight || 0, reps: ex.reps, completed: true });
           }
         }
 
-        // Save to exercises collection
-        const exerciseResponse = await fetch('/api/exercises', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: exerciseData.name,
-            category: exerciseData.category,
-            muscleGroup: exerciseData.muscleGroup,
-            sets: setsArray,
-            duration: exerciseData.duration,
-            distance: exerciseData.distance,
-            caloriesBurned: exerciseData.caloriesBurned,
-            notes: exerciseData.notes,
-            isAIAnalyzed: true,
-            description: exerciseDescription,
-            date: new Date(),
-          }),
+        await addExercise(currentUser.uid, {
+          name: ex.name,
+          category: ex.category,
+          muscleGroup: ex.muscleGroup,
+          sets: setsArray,
+          duration: ex.duration,
+          distance: ex.distance,
+          caloriesBurned: ex.caloriesBurned,
+          notes: ex.notes,
+          isAIAnalyzed: true,
+          description: exerciseDescription,
+          date: new Date(),
         });
 
-        const exerciseResult = await exerciseResponse.json();
-        
-        if (exerciseResult.success) {
-          // Update exercise calories (calories are now coming from the AI analysis)
-          const newExerciseCalories = exerciseCalories + (exerciseData.caloriesBurned || 0);
-          setExerciseCalories(newExerciseCalories);
-
-          // Update FitnessLog for streak tracking
-          updateFitnessData({ exerciseCalories: newExerciseCalories });
-
-          // Refresh exercise history
-          fetchExercises();
-          setExerciseDescription('');
-        } else {
-          setExerciseAnalysisError('Failed to save exercise to database');
-        }
+        const newTotal = await fetchExercises(currentUser.uid);
+        updateFitnessData({ exerciseCalories: newTotal });
+        setExerciseDescription('');
       } else {
         setExerciseAnalysisError(result.error || 'Failed to analyze exercise');
       }
-    } catch (error) {
-      console.error('Error analyzing exercise:', error);
+    } catch {
       setExerciseAnalysisError('Network error. Please try again.');
     } finally {
       setIsAnalyzingExercise(false);
     }
   };
 
-  // Get summary data - use MongoDB data if available, otherwise use current day's data
-  const getSummaryData = (period: 'day' | 'week' | 'month' | 'year') => {
-    if (summaryData && summaryData.period === period) {
-      return summaryData;
+  const handleDeleteExercise = async (id: string) => {
+    if (!currentUser) return;
+    try {
+      await deleteExercise(currentUser.uid, id);
+      const newTotal = await fetchExercises(currentUser.uid);
+      updateFitnessData({ exerciseCalories: newTotal });
+    } catch (error) {
+      console.error('Error deleting exercise:', error);
     }
-    
-    // Fallback to current data for day view
+  };
+
+  const saveQuickAddExercise = async (
+    exerciseName: string,
+    category: 'cardio' | 'weight-training',
+    duration?: number,
+    sets?: number,
+    reps?: string,
+    muscleGroup?: string,
+    weight?: number,
+    distance?: number,
+  ) => {
+    if (!currentUser) return;
+    try {
+      const setsArray = [];
+      if (category === 'weight-training' && sets && reps) {
+        const repsNum = parseInt(reps.split('-')[0]) || 10;
+        for (let i = 1; i <= sets; i++) {
+          setsArray.push({ setNumber: i, weight: weight || 0, reps: repsNum, completed: true });
+        }
+      }
+
+      await addExercise(currentUser.uid, {
+        name: exerciseName,
+        category,
+        muscleGroup: muscleGroup as IExercise['muscleGroup'],
+        sets: setsArray,
+        duration,
+        distance,
+        caloriesBurned: duration ? duration * 8 : sets ? sets * 15 : 0,
+        isAIAnalyzed: false,
+        date: new Date(),
+      });
+
+      const newTotal = await fetchExercises(currentUser.uid);
+      updateFitnessData({ exerciseCalories: newTotal });
+    } catch (error) {
+      console.error('Error saving quick-add exercise:', error);
+    }
+  };
+
+  const toggleExercise = (id: string) => {
+    setCompletedExercises((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // ─── Summary helpers ─────────────────────────────────────────────────────────
+
+  const getSummaryData = (period: 'day' | 'week' | 'month' | 'year'): SummaryData => {
+    if (summaryData && summaryData.period === period) return summaryData;
     return {
       period,
       water: {
@@ -601,16 +659,21 @@ export default function Home() {
     };
   };
 
-  // Fetch AI analysis for summary
+  // ─── AI Analysis ─────────────────────────────────────────────────────────────
+
   const fetchAIAnalysis = async () => {
+    if (!currentUser) return;
     setIsAnalyzingAI(true);
     setAiAnalysis(null);
     try {
-      const response = await fetch(`/api/fitness/summary/analyze?period=${summaryPeriod}`);
-      const result = await response.json();
-      if (result.success) {
-        setAiAnalysis(result.data.analysis);
-      }
+      const sd = getSummaryData(summaryPeriod);
+      const res = await fetch('/api/fitness/summary/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summary: sd, period: summaryPeriod }),
+      });
+      const result = await res.json();
+      if (result.success) setAiAnalysis(result.data.analysis);
     } catch (error) {
       console.error('Error fetching AI analysis:', error);
     } finally {
@@ -618,19 +681,35 @@ export default function Home() {
     }
   };
 
-  // Export data as CSV
+  // ─── Export (client-side) ────────────────────────────────────────────────────
+
   const exportCSV = async () => {
+    if (!currentUser) return;
     setIsExporting(true);
     try {
-      const response = await fetch(`/api/fitness/summary/export?period=${summaryPeriod}&format=csv`);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const sd = getSummaryData(summaryPeriod);
+      const rows = [
+        ['Period', 'Water (L)', 'Water Goal (L)', 'Calories', 'Calorie Goal', 'Exercise Cal', 'Exercise Goal', 'Days'],
+        [
+          sd.period,
+          sd.water.consumed.toFixed(2),
+          (sd.water.goal * sd.totalDays).toFixed(2),
+          sd.calories.consumed,
+          sd.calories.goal * sd.totalDays,
+          sd.exercise.calories,
+          sd.exercise.goal * sd.totalDays,
+          sd.totalDays,
+        ],
+      ];
+      const csv = rows.map((r) => r.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `fitness-report-${summaryPeriod}-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
+      URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
       console.error('Error exporting CSV:', error);
@@ -639,23 +718,22 @@ export default function Home() {
     }
   };
 
-  // Export data as JSON
   const exportJSON = async () => {
+    if (!currentUser) return;
     setIsExporting(true);
     try {
-      const response = await fetch(`/api/fitness/summary/export?period=${summaryPeriod}&format=json`);
-      const result = await response.json();
-      if (result.success) {
-        const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `fitness-report-${summaryPeriod}-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
+      const sd = getSummaryData(summaryPeriod);
+      const blob = new Blob([JSON.stringify({ summary: sd, exportedAt: new Date().toISOString() }, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fitness-report-${summaryPeriod}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
       console.error('Error exporting JSON:', error);
     } finally {
@@ -663,79 +741,116 @@ export default function Home() {
     }
   };
 
-  const toggleExercise = (exerciseId: string) => {
-    setCompletedExercises(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(exerciseId)) {
-        newSet.delete(exerciseId);
-      } else {
-        newSet.add(exerciseId);
-      }
-      return newSet;
-    });
-  };
+  // ─── Auth ────────────────────────────────────────────────────────────────────
 
-  // Save quick-add exercise to database
-  const saveQuickAddExercise = async (exerciseName: string, category: 'cardio' | 'weight-training', duration?: number, sets?: number, reps?: string, muscleGroup?: string, weight?: number, distance?: number) => {
+  const handleGoogleSignIn = async () => {
     try {
-      const setsArray = [];
-      if (category === 'weight-training' && sets && reps) {
-        // Parse reps (e.g., "8-12" -> 10)
-        const repsNum = parseInt(reps.split('-')[0]) || 10;
-        for (let i = 1; i <= sets; i++) {
-          setsArray.push({
-            setNumber: i,
-            weight: weight || 0,
-            reps: repsNum,
-            completed: true,
-          });
-        }
-      }
-
-      const response = await fetch('/api/exercises', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: exerciseName,
-          category: category,
-          muscleGroup: muscleGroup,
-          sets: setsArray,
-          duration: duration,
-          distance: distance,
-          caloriesBurned: duration ? duration * 8 : sets ? sets * 15 : 0, // Rough estimate
-          isAIAnalyzed: false,
-          date: new Date(),
-        }),
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        // Refresh exercises from database (this will recalculate totals and update fitness log)
-        await fetchExercises();
-      }
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      console.error('Error saving quick-add exercise:', error);
+      console.error('Sign in error:', error);
     }
   };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      // Reset all state
+      setCurrentUser(null);
+      setWaterIntake(0);
+      setCalories(0);
+      setCarbs(0);
+      setFats(0);
+      setProtein(0);
+      setExerciseCalories(0);
+      setMeals([]);
+      setExercises([]);
+      setStreakLogs([]);
+      setUserProfile(null);
+      setSummaryData(null);
+      setAiAnalysis(null);
+      setTodayWeight(null);
+      setTodayBodyFat(null);
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
+
+  // ─── Render: loading / sign-in ────────────────────────────────────────────────
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="p-3 bg-primary/10 rounded-full">
+                <Dumbbell className="h-10 w-10 text-primary" />
+              </div>
+            </div>
+            <div>
+              <CardTitle className="text-2xl">Fitness Tracker</CardTitle>
+              <CardDescription className="mt-1">Sign in to track your daily health goals</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full" size="lg" onClick={handleGoogleSignIn}>
+              <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+              Continue with Google
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ─── Main app ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         <header className="mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">
-            Fitness Tracker
-          </h1>
-          <p className="text-muted-foreground text-sm md:text-base">
-            Monitor your daily health and fitness goals
-          </p>
+          <div className="flex items-start justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold mb-2">Fitness Tracker</h1>
+              <p className="text-muted-foreground text-sm md:text-base">
+                Monitor your daily health and fitness goals
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {currentUser.photoURL && (
+                <img
+                  src={currentUser.photoURL}
+                  alt={currentUser.displayName || 'User'}
+                  className="w-8 h-8 rounded-full border border-border"
+                />
+              )}
+              <div className="text-sm hidden sm:block">
+                <div className="font-medium">{currentUser.displayName}</div>
+                <div className="text-muted-foreground text-xs">{currentUser.email}</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-1" />
+                Sign Out
+              </Button>
+            </div>
+          </div>
         </header>
 
-        {/* Summary Section at Top */}
-        
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content - Tabs */}
+          {/* Main Content */}
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto gap-1">
@@ -768,9 +883,7 @@ export default function Home() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {!isMounted || isLoading ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Loading your water intake...
-                      </div>
+                      <div className="text-center py-8 text-muted-foreground">Loading your water intake...</div>
                     ) : (
                       <>
                         <div className="space-y-2">
@@ -785,30 +898,21 @@ export default function Home() {
                             <Droplet className="h-4 w-4 mr-2" />
                             Add 250ml
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            onClick={removeWater} 
-                            disabled={waterIntake === 0}
-                          >
+                          <Button variant="outline" onClick={removeWater} disabled={waterIntake === 0}>
                             Remove 250ml
                           </Button>
-                          <Button variant="outline" onClick={() => {
-                            setWaterIntake(0);
-                            updateFitnessData({ waterLiters: 0 });
-                          }}>
+                          <Button variant="outline" onClick={() => { setWaterIntake(0); updateFitnessData({ waterLiters: 0 }); }}>
                             Reset
                           </Button>
                         </div>
-                        <div className="grid grid-cols-4 sm:grid-cols-4 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                           {Array.from({ length: 16 }).map((_, i) => {
-                            const threshold = (i + 1) * 0.25; // Each box represents 250ml
+                            const threshold = (i + 1) * 0.25;
                             return (
                               <div
                                 key={i}
                                 className={`h-12 md:h-16 rounded-lg border-2 flex items-center justify-center transition-all ${
-                                  waterIntake >= threshold
-                                    ? "bg-blue-500/20 border-blue-500"
-                                    : "bg-muted border-border"
+                                  waterIntake >= threshold ? "bg-blue-500/20 border-blue-500" : "bg-muted border-border"
                                 }`}
                               >
                                 {waterIntake >= threshold && <Droplet className="h-5 w-5 text-blue-500" />}
@@ -826,30 +930,21 @@ export default function Home() {
               <TabsContent value="diet" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          <Utensils className="h-5 w-5 text-green-500" />
-                          Nutrition Tracking
-                        </CardTitle>
-                        <CardDescription>AI-powered food analysis with macros</CardDescription>
-                      </div>
-                    </div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Utensils className="h-5 w-5 text-green-500" />
+                      Nutrition Tracking
+                    </CardTitle>
+                    <CardDescription>AI-powered food analysis with macros</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {!isMounted || isLoading ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Loading your nutrition data...
-                      </div>
+                      <div className="text-center py-8 text-muted-foreground">Loading your nutrition data...</div>
                     ) : (
                       <>
-                        {/* Meal Type Selector */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium">Meal Type</label>
                           <MealTypeSelect value={mealType} onChange={setMealType} />
                         </div>
-
-                        {/* AI Food Input */}
                         <div className="space-y-3">
                           <label className="text-sm font-medium">Describe your meal</label>
                           <div className="flex gap-2">
@@ -862,85 +957,58 @@ export default function Home() {
                               onKeyPress={(e) => e.key === 'Enter' && analyzeFood()}
                               disabled={isAnalyzing}
                             />
-                            <Button 
-                              onClick={analyzeFood} 
-                              disabled={isAnalyzing || !foodDescription.trim()}
-                            >
+                            <Button onClick={analyzeFood} disabled={isAnalyzing || !foodDescription.trim()}>
                               {isAnalyzing ? 'Analyzing...' : 'Add Food'}
                             </Button>
                           </div>
-                          {analysisError && (
-                            <div className="text-sm text-red-600">{analysisError}</div>
-                          )}
+                          {analysisError && <div className="text-sm text-red-600">{analysisError}</div>}
                           <div className="text-xs text-muted-foreground">
-                            Powered by Gemini AI - Enter any food description for automatic macro calculation
+                            Powered by Gemini AI — Enter any food description for automatic macro calculation
                           </div>
                         </div>
 
-                        {/* Macros Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <Card className="p-4">
-                            <div className="text-xs text-muted-foreground mb-1">Calories</div>
-                            <div className="text-2xl font-bold">{calories}</div>
-                            <div className="text-xs text-muted-foreground">/ {calorieGoal} kcal</div>
-                            <Progress value={(calories / calorieGoal) * 100} className="h-1 mt-2" />
-                          </Card>
-
-                          <Card className="p-4">
-                            <div className="text-xs text-muted-foreground mb-1">Carbs</div>
-                            <div className="text-2xl font-bold">{carbs.toFixed(1)}</div>
-                            <div className="text-xs text-muted-foreground">/ {carbsGoal}g</div>
-                            <Progress value={(carbs / carbsGoal) * 100} className="h-1 mt-2" />
-                          </Card>
-
-                          <Card className="p-4">
-                            <div className="text-xs text-muted-foreground mb-1">Fats</div>
-                            <div className="text-2xl font-bold">{fats.toFixed(1)}</div>
-                            <div className="text-xs text-muted-foreground">/ {fatsGoal}g</div>
-                            <Progress value={(fats / fatsGoal) * 100} className="h-1 mt-2" />
-                          </Card>
-
-                          <Card className="p-4">
-                            <div className="text-xs text-muted-foreground mb-1">Protein</div>
-                            <div className="text-2xl font-bold">{protein.toFixed(1)}</div>
-                            <div className="text-xs text-muted-foreground">/ {proteinGoal}g</div>
-                            <Progress value={(protein / proteinGoal) * 100} className="h-1 mt-2" />
-                          </Card>
+                          {[
+                            { label: 'Calories', value: calories, goal: calorieGoal, unit: 'kcal' },
+                            { label: 'Carbs', value: carbs, goal: carbsGoal, unit: 'g', fixed: 1 },
+                            { label: 'Fats', value: fats, goal: fatsGoal, unit: 'g', fixed: 1 },
+                            { label: 'Protein', value: protein, goal: proteinGoal, unit: 'g', fixed: 1 },
+                          ].map(({ label, value, goal, unit, fixed }) => (
+                            <Card key={label} className="p-4">
+                              <div className="text-xs text-muted-foreground mb-1">{label}</div>
+                              <div className="text-2xl font-bold">{fixed ? value.toFixed(fixed) : value}</div>
+                              <div className="text-xs text-muted-foreground">/ {goal} {unit}</div>
+                              <Progress value={(value / goal) * 100} className="h-1 mt-2" />
+                            </Card>
+                          ))}
                         </div>
 
-                        {/* Macro Distribution */}
-                        <Card className="p-4 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700">
+                        <Card className="p-4 bg-slate-50 dark:bg-slate-900/50">
                           <div className="text-sm font-medium mb-3">Macro Distribution</div>
                           <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">Carbs</span>
-                              <span className="font-medium">{((carbs / carbsGoal) * 100).toFixed(0)}%</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">Fats</span>
-                              <span className="font-medium">{((fats / fatsGoal) * 100).toFixed(0)}%</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">Protein</span>
-                              <span className="font-medium">{((protein / proteinGoal) * 100).toFixed(0)}%</span>
-                            </div>
+                            {[
+                              { name: 'Carbs', val: carbs, goal: carbsGoal },
+                              { name: 'Fats', val: fats, goal: fatsGoal },
+                              { name: 'Protein', val: protein, goal: proteinGoal },
+                            ].map(({ name, val, goal }) => (
+                              <div key={name} className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">{name}</span>
+                                <span className="font-medium">{((val / goal) * 100).toFixed(0)}%</span>
+                              </div>
+                            ))}
                           </div>
                         </Card>
 
-                        {/* Meal History */}
                         <div className="border-t pt-4">
                           <MealHistory meals={meals} onDelete={handleDeleteMeal} />
                         </div>
 
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           onClick={() => {
-                            setCalories(0);
-                            setCarbs(0);
-                            setFats(0);
-                            setProtein(0);
+                            setCalories(0); setCarbs(0); setFats(0); setProtein(0);
                             updateFitnessData({ calories: 0, carbs: 0, fats: 0, protein: 0 });
-                          }} 
+                          }}
                           className="w-full"
                         >
                           Reset All Nutrition
@@ -972,9 +1040,7 @@ export default function Home() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {!isMounted || isLoading ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Loading your exercise data...
-                      </div>
+                      <div className="text-center py-8 text-muted-foreground">Loading your exercise data...</div>
                     ) : (
                       <>
                         <div className="space-y-2">
@@ -985,7 +1051,6 @@ export default function Home() {
                           <Progress value={(exerciseCalories / exerciseGoal) * 100} className="h-3" />
                         </div>
 
-                        {/* AI Exercise Input */}
                         <div className="space-y-3 border-b pb-4 mb-4">
                           <label className="text-sm font-medium">Describe your workout</label>
                           <div className="flex gap-2">
@@ -994,55 +1059,38 @@ export default function Home() {
                               value={exerciseDescription}
                               onChange={(e) => setExerciseDescription(e.target.value)}
                               placeholder="e.g., 3 sets of 10 reps bench press at 80kg, or 30 minute run 5km"
-                              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
                               onKeyPress={(e) => e.key === 'Enter' && analyzeExercise()}
                               disabled={isAnalyzingExercise}
                             />
-                            <Button 
-                              onClick={analyzeExercise} 
-                              disabled={isAnalyzingExercise || !exerciseDescription.trim()}
-                            >
+                            <Button onClick={analyzeExercise} disabled={isAnalyzingExercise || !exerciseDescription.trim()}>
                               {isAnalyzingExercise ? 'Analyzing...' : 'Add Exercise'}
                             </Button>
                           </div>
-                          {exerciseAnalysisError && (
-                            <div className="text-sm text-red-600 dark:text-red-400">{exerciseAnalysisError}</div>
-                          )}
+                          {exerciseAnalysisError && <div className="text-sm text-red-600 dark:text-red-400">{exerciseAnalysisError}</div>}
                           <div className="text-xs text-muted-foreground flex items-center gap-1">
                             <Sparkles className="h-3 w-3" />
-                            Powered by Gemini AI - Enter any exercise description for automatic tracking
+                            Powered by Gemini AI — Enter any exercise description for automatic tracking
                           </div>
                         </div>
 
-                        
-
-                        {/* Category Selector */}
                         <div className="space-y-3">
                           <h3 className="text-sm font-semibold flex items-center gap-2">
                             <Dumbbell className="h-4 w-4" />
                             Quick Add Exercises
                           </h3>
                           <div className="flex gap-2">
-                            <Button
-                              variant={exerciseCategory === 'cardio' ? 'default' : 'outline'}
-                              onClick={() => setExerciseCategory('cardio')}
-                              className="flex-1"
-                            >
+                            <Button variant={exerciseCategory === 'cardio' ? 'default' : 'outline'} onClick={() => setExerciseCategory('cardio')} className="flex-1">
                               <Heart className="h-4 w-4 mr-2" />
                               Cardio
                             </Button>
-                            <Button
-                              variant={exerciseCategory === 'weight-training' ? 'default' : 'outline'}
-                              onClick={() => setExerciseCategory('weight-training')}
-                              className="flex-1"
-                            >
+                            <Button variant={exerciseCategory === 'weight-training' ? 'default' : 'outline'} onClick={() => setExerciseCategory('weight-training')} className="flex-1">
                               <Dumbbell className="h-4 w-4 mr-2" />
                               Weight Training
                             </Button>
                           </div>
                         </div>
 
-                        {/* Cardio Exercises */}
                         {exerciseCategory === 'cardio' && (
                           <div className="space-y-3">
                             <h3 className="text-sm font-semibold">Cardio Exercises</h3>
@@ -1058,17 +1106,7 @@ export default function Home() {
                                     const wasCompleted = completedExercises.has(exercise.id);
                                     toggleExercise(exercise.id);
                                     if (!wasCompleted) {
-                                      // Save to database and refresh with custom values
-                                      await saveQuickAddExercise(
-                                        exercise.name, 
-                                        'cardio', 
-                                        duration,
-                                        undefined,
-                                        undefined,
-                                        undefined,
-                                        undefined,
-                                        distance
-                                      );
+                                      await saveQuickAddExercise(exercise.name, 'cardio', duration, undefined, undefined, undefined, undefined, distance);
                                     }
                                   }}
                                 />
@@ -1077,33 +1115,30 @@ export default function Home() {
                           </div>
                         )}
 
-                        {/* Weight Training Exercises */}
                         {exerciseCategory === 'weight-training' && (
                           <div className="space-y-3">
-                            {/* Muscle Group Selector */}
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                              {weightTrainingCategories.map((category) => (
+                              {weightTrainingCategories.map((cat) => (
                                 <Button
-                                  key={category.id}
+                                  key={cat.id}
                                   size="sm"
-                                  variant={selectedMuscleGroup === category.id ? 'default' : 'outline'}
-                                  onClick={() => setSelectedMuscleGroup(category.id)}
+                                  variant={selectedMuscleGroup === cat.id ? 'default' : 'outline'}
+                                  onClick={() => setSelectedMuscleGroup(cat.id)}
                                   className="flex flex-col h-auto py-2 px-2"
                                 >
-                                  <span className="text-lg mb-1">{category.icon}</span>
-                                  <span className="text-xs">{category.name}</span>
+                                  <span className="text-lg mb-1">{cat.icon}</span>
+                                  <span className="text-xs">{cat.name}</span>
                                 </Button>
                               ))}
                             </div>
 
-                            {/* Exercise List for Selected Muscle Group */}
                             {weightTrainingCategories
-                              .filter(cat => cat.id === selectedMuscleGroup)
-                              .map((category) => (
-                                <div key={category.id} className="space-y-2">
-                                  <h3 className="text-sm font-semibold">{category.name} Exercises</h3>
+                              .filter((c) => c.id === selectedMuscleGroup)
+                              .map((cat) => (
+                                <div key={cat.id} className="space-y-2">
+                                  <h3 className="text-sm font-semibold">{cat.name} Exercises</h3>
                                   <div className="grid grid-cols-1 gap-2">
-                                    {category.exercises.map((exercise) => (
+                                    {cat.exercises.map((exercise) => (
                                       <CustomizableExerciseItem
                                         key={exercise.id}
                                         name={exercise.name}
@@ -1115,16 +1150,7 @@ export default function Home() {
                                           const wasCompleted = completedExercises.has(exercise.id);
                                           toggleExercise(exercise.id);
                                           if (!wasCompleted) {
-                                            // Save to database and refresh with custom values
-                                            await saveQuickAddExercise(
-                                              exercise.name, 
-                                              'weight-training', 
-                                              undefined, 
-                                              sets, 
-                                              reps,
-                                              category.id,
-                                              weight
-                                            );
+                                            await saveQuickAddExercise(exercise.name, 'weight-training', undefined, sets, reps, cat.id, weight);
                                           }
                                         }}
                                       />
@@ -1146,22 +1172,16 @@ export default function Home() {
                     )}
                   </CardContent>
                 </Card>
-                {/* Exercise History */}
-                    <div className="border-b pb-4">
-                        <ExerciseHistory exercises={exercises} onDelete={handleDeleteExercise} />
-                   </div>
+                <div className="border-b pb-4">
+                  <ExerciseHistory exercises={exercises} onDelete={handleDeleteExercise} />
+                </div>
               </TabsContent>
 
-              {/* Weight Tracking Tab */}
+              {/* Weight Tab */}
               <TabsContent value="weight" className="space-y-4">
                 {userProfile ? (
                   <>
-                    {/* Weight Graph - At the Top */}
-                    <WeightGraph days={30} targetWeight={userProfile.targetWeight} />
-                    
-                    
-                    
-                    {/* Daily Weight Log */}
+                    <WeightGraph uid={currentUser.uid} days={30} targetWeight={userProfile.targetWeight} />
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -1174,73 +1194,51 @@ export default function Home() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Weight (kg)</label>
-                            <div className="flex gap-2">
-                              <input
-                                type="number"
-                                step="0.1"
-                                value={todayWeight || ''}
-                                onChange={(e) => setTodayWeight(parseFloat(e.target.value) || null)}
-                                placeholder={userProfile.currentWeight.toString()}
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                              />
-                            </div>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={todayWeight || ''}
+                              onChange={(e) => { setTodayWeight(parseFloat(e.target.value) || null); setWeightSaved(false); }}
+                              placeholder={userProfile.currentWeight.toString()}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            />
                             {todayWeight && (
                               <div className="text-xs text-muted-foreground">
-                                {todayWeight > userProfile.currentWeight 
-                                  ? `+${(todayWeight - userProfile.currentWeight).toFixed(1)} kg` 
-                                  : `${(todayWeight - userProfile.currentWeight).toFixed(1)} kg`}
+                                {todayWeight > userProfile.currentWeight ? '+' : ''}
+                                {(todayWeight - userProfile.currentWeight).toFixed(1)} kg
                               </div>
                             )}
                           </div>
-
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Body Fat (%)</label>
-                            <div className="flex gap-2">
-                              <input
-                                type="number"
-                                step="0.1"
-                                value={todayBodyFat || ''}
-                                onChange={(e) => setTodayBodyFat(parseFloat(e.target.value) || null)}
-                                placeholder={userProfile.bodyFatPercentage.toString()}
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                              />
-                            </div>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={todayBodyFat || ''}
+                              onChange={(e) => { setTodayBodyFat(parseFloat(e.target.value) || null); setWeightSaved(false); }}
+                              placeholder={userProfile.bodyFatPercentage.toString()}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            />
                             {todayBodyFat && (
                               <div className="text-xs text-muted-foreground">
-                                {todayBodyFat > userProfile.bodyFatPercentage 
-                                  ? `+${(todayBodyFat - userProfile.bodyFatPercentage).toFixed(1)}%` 
-                                  : `${(todayBodyFat - userProfile.bodyFatPercentage).toFixed(1)}%`}
+                                {todayBodyFat > userProfile.bodyFatPercentage ? '+' : ''}
+                                {(todayBodyFat - userProfile.bodyFatPercentage).toFixed(1)}%
                               </div>
                             )}
                           </div>
                         </div>
 
-                        <Button 
+                        <Button
                           onClick={async () => {
-                            if (todayWeight) {
-                              // Save to WeightLog collection
-                              await fetch('/api/weight-log', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  date: new Date(),
-                                  weight: todayWeight,
-                                  bodyFatPercentage: todayBodyFat || undefined,
-                                }),
-                              });
-                              
-                              // Also update FitnessLog for today
-                              await updateFitnessData({ 
-                                weight: todayWeight, 
-                                bodyFatPercentage: todayBodyFat || undefined 
-                              });
-                              
-                              // Refresh today's data to show it's saved
-                              await fetchTodayData();
-                              
-                              // Trigger a re-render of the graph by updating a key
-                              window.location.reload();
-                            }
+                            if (!todayWeight || !currentUser) return;
+                            const today = todayMidnight();
+                            await saveWeightLog(currentUser.uid, today, {
+                              date: today,
+                              weight: todayWeight,
+                              bodyFatPercentage: todayBodyFat || undefined,
+                            });
+                            await updateFitnessData({ weight: todayWeight, bodyFatPercentage: todayBodyFat || undefined });
+                            setWeightSaved(true);
                           }}
                           disabled={!todayWeight}
                           className="w-full"
@@ -1248,9 +1246,9 @@ export default function Home() {
                           Save Today's Measurements
                         </Button>
 
-                        {todayWeight && (
+                        {weightSaved && (
                           <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-                            <div className="text-sm font-semibold text-green-600">Progress Saved! ✅</div>
+                            <div className="text-sm font-semibold text-green-600">Progress Saved!</div>
                             <div className="text-xs text-muted-foreground mt-1">
                               Your weight log has been updated and profile synced.
                             </div>
@@ -1258,17 +1256,6 @@ export default function Home() {
                         )}
                       </CardContent>
                     </Card>
-                  {/* <BodyStats
-                      currentWeight={todayWeight || userProfile.currentWeight}
-                      targetWeight={userProfile.targetWeight}
-                      bodyFatPercentage={todayBodyFat || userProfile.bodyFatPercentage}
-                      skeletalMuscle={userProfile.skeletalMuscle}
-                      visceralFatIndex={userProfile.visceralFatIndex}
-                      bmr={userProfile.bmr}
-                      dailyCalorieTarget={userProfile.dailyCalorieTarget}
-                      dailyProteinTarget={userProfile.dailyProteinTarget}
-                      goalType={userProfile.goalType}
-                    /> */}
                   </>
                 ) : (
                   <Card>
@@ -1281,7 +1268,7 @@ export default function Home() {
 
               {/* Streak Tab */}
               <TabsContent value="streak" className="space-y-4">
-                 <Card>
+                <Card>
                   <CardHeader>
                     <CardTitle>Activity Heatmap</CardTitle>
                     <CardDescription>
@@ -1298,16 +1285,12 @@ export default function Home() {
                       <Target className="h-5 w-5 text-orange-500" />
                       Your Streak
                     </CardTitle>
-                    <CardDescription>
-                      Complete all 3 daily goals to maintain your streak
-                    </CardDescription>
+                    <CardDescription>Complete all 3 daily goals to maintain your streak</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <StreakStats logs={streakLogs} />
                   </CardContent>
                 </Card>
-
-               
               </TabsContent>
 
               {/* Summary Tab */}
@@ -1320,34 +1303,16 @@ export default function Home() {
                         Progress Summary
                       </CardTitle>
                       <div className="flex gap-2 flex-wrap">
-                        <Button
-                          size="sm"
-                          variant={summaryPeriod === 'day' ? 'default' : 'outline'}
-                          onClick={() => setSummaryPeriod('day')}
-                        >
-                          Day
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={summaryPeriod === 'week' ? 'default' : 'outline'}
-                          onClick={() => setSummaryPeriod('week')}
-                        >
-                          Week
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={summaryPeriod === 'month' ? 'default' : 'outline'}
-                          onClick={() => setSummaryPeriod('month')}
-                        >
-                          Month
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={summaryPeriod === 'year' ? 'default' : 'outline'}
-                          onClick={() => setSummaryPeriod('year')}
-                        >
-                          Year
-                        </Button>
+                        {(['day', 'week', 'month', 'year'] as const).map((p) => (
+                          <Button
+                            key={p}
+                            size="sm"
+                            variant={summaryPeriod === p ? 'default' : 'outline'}
+                            onClick={() => setSummaryPeriod(p)}
+                          >
+                            {p.charAt(0).toUpperCase() + p.slice(1)}
+                          </Button>
+                        ))}
                       </div>
                     </div>
                     <CardDescription>
@@ -1359,94 +1324,56 @@ export default function Home() {
                       <div className="flex items-center justify-center py-12">
                         <div className="text-center space-y-3">
                           <Loader2 className="h-8 w-8 animate-spin mx-auto text-orange-500" />
-                          <p className="text-sm text-muted-foreground">Loading {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} summary...</p>
+                          <p className="text-sm text-muted-foreground">Loading summary...</p>
                         </div>
                       </div>
                     ) : (
                       <>
-                        {/* Water Summary */}
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Droplet className="h-5 w-5 text-blue-500" />
-                              <h3 className="font-semibold">Water Intake</h3>
+                        {[
+                          { icon: <Droplet className="h-5 w-5 text-blue-500" />, label: 'Water Intake', key: 'water' as const, unit: 'L', color: 'blue' },
+                          { icon: <Utensils className="h-5 w-5 text-green-500" />, label: 'Calorie Intake', key: 'calories' as const, unit: 'kcal', color: 'green' },
+                          { icon: <Dumbbell className="h-5 w-5 text-purple-500" />, label: 'Exercise Calories', key: 'exercise' as const, unit: 'cal', color: 'purple' },
+                        ].map(({ icon, label, key, unit }) => {
+                          const sd = getSummaryData(summaryPeriod);
+                          const section = sd[key];
+                          const consumed = key === 'exercise' ? (section as SummaryData['exercise']).calories : (section as SummaryData['water'] | SummaryData['calories']).consumed;
+                          const goal = section.goal * sd.totalDays;
+                          const pct = section.percentage;
+                          return (
+                            <div key={key} className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {icon}
+                                  <h3 className="font-semibold">{label}</h3>
+                                </div>
+                                <Badge variant={pct >= 100 ? "default" : "secondary"}>{pct}%</Badge>
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">{key === 'exercise' ? 'Burned' : 'Consumed'}</span>
+                                  <span className="font-medium">
+                                    {typeof consumed === 'number' && key === 'water'
+                                      ? `${consumed.toFixed(2)} / ${goal.toFixed(2)} ${unit}`
+                                      : `${Math.round(consumed).toLocaleString()} / ${Math.round(goal).toLocaleString()} ${unit}`}
+                                  </span>
+                                </div>
+                                <Progress value={pct} className="h-2" />
+                              </div>
                             </div>
-                            <Badge variant={getSummaryData(summaryPeriod).water.percentage >= 100 ? "default" : "secondary"}>
-                              {getSummaryData(summaryPeriod).water.percentage}%
-                            </Badge>
+                          );
+                        })}
+
+                        <div className="pt-4 border-t text-center space-y-2">
+                          <div className="text-4xl font-bold text-primary">
+                            {Math.round(
+                              (getSummaryData(summaryPeriod).water.percentage +
+                                getSummaryData(summaryPeriod).calories.percentage +
+                                getSummaryData(summaryPeriod).exercise.percentage) / 3
+                            )}%
                           </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Consumed</span>
-                              <span className="font-medium">
-                                {getSummaryData(summaryPeriod).water.consumed.toFixed(2)} / {(getSummaryData(summaryPeriod).water.goal * getSummaryData(summaryPeriod).totalDays).toFixed(2)} L
-                              </span>
-                            </div>
-                            <Progress value={getSummaryData(summaryPeriod).water.percentage} className="h-2" />
-                          </div>
+                          <p className="text-sm text-muted-foreground">Overall completion</p>
                         </div>
 
-                        {/* Calories Summary */}
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Utensils className="h-5 w-5 text-green-500" />
-                              <h3 className="font-semibold">Calorie Intake</h3>
-                            </div>
-                            <Badge variant={getSummaryData(summaryPeriod).calories.percentage >= 100 ? "default" : "secondary"}>
-                              {getSummaryData(summaryPeriod).calories.percentage}%
-                            </Badge>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Consumed</span>
-                              <span className="font-medium">
-                                {getSummaryData(summaryPeriod).calories.consumed.toLocaleString()} / {Math.round(getSummaryData(summaryPeriod).calories.goal * getSummaryData(summaryPeriod).totalDays).toLocaleString()} kcal
-                              </span>
-                            </div>
-                            <Progress value={getSummaryData(summaryPeriod).calories.percentage} className="h-2" />
-                          </div>
-                        </div>
-
-                        {/* Exercise Summary */}
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Dumbbell className="h-5 w-5 text-purple-500" />
-                              <h3 className="font-semibold">Exercise Calories</h3>
-                            </div>
-                            <Badge variant={getSummaryData(summaryPeriod).exercise.percentage >= 100 ? "default" : "secondary"}>
-                              {getSummaryData(summaryPeriod).exercise.percentage}%
-                            </Badge>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Burned</span>
-                              <span className="font-medium">
-                                {getSummaryData(summaryPeriod).exercise.calories.toLocaleString()} / {Math.round(getSummaryData(summaryPeriod).exercise.goal * getSummaryData(summaryPeriod).totalDays).toLocaleString()} cal
-                              </span>
-                            </div>
-                            <Progress value={getSummaryData(summaryPeriod).exercise.percentage} className="h-2" />
-                          </div>
-                        </div>
-
-                        {/* Overall Stats */}
-                        <div className="pt-4 border-t">
-                          <div className="text-center space-y-2">
-                            <div className="text-4xl font-bold text-primary">
-                              {Math.round(
-                                (getSummaryData(summaryPeriod).water.percentage +
-                                  getSummaryData(summaryPeriod).calories.percentage +
-                                  getSummaryData(summaryPeriod).exercise.percentage) / 3
-                              )}%
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              Overall {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} completion
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Quick Stats Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                           <div className="text-center space-y-1 p-3 bg-blue-500/10 rounded-lg">
                             <div className="text-xl sm:text-2xl font-bold text-blue-500">
@@ -1468,41 +1395,21 @@ export default function Home() {
                           </div>
                         </div>
 
-                        {/* Export Buttons */}
                         <div className="pt-4 border-t">
                           <h3 className="font-semibold mb-3 flex items-center gap-2">
                             <Download className="h-4 w-4" />
                             Export Report
                           </h3>
                           <div className="flex gap-2 flex-wrap">
-                            <Button 
-                              variant="outline" 
-                              onClick={exportCSV}
-                              disabled={isExporting}
-                            >
-                              {isExporting ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              ) : (
-                                <FileText className="h-4 w-4 mr-2" />
-                              )}
+                            <Button variant="outline" onClick={exportCSV} disabled={isExporting}>
+                              {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
                               Export CSV
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              onClick={exportJSON}
-                              disabled={isExporting}
-                            >
-                              {isExporting ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              ) : (
-                                <Download className="h-4 w-4 mr-2" />
-                              )}
+                            <Button variant="outline" onClick={exportJSON} disabled={isExporting}>
+                              {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                               Export JSON
                             </Button>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Download your {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} fitness data including meals and exercises
-                          </p>
                         </div>
                       </>
                     )}
@@ -1517,27 +1424,15 @@ export default function Home() {
                         <Brain className="h-5 w-5 text-pink-500" />
                         AI Fitness Analysis
                       </CardTitle>
-                      <Button 
-                        size="sm" 
-                        onClick={fetchAIAnalysis}
-                        disabled={isAnalyzingAI}
-                      >
+                      <Button size="sm" onClick={fetchAIAnalysis} disabled={isAnalyzingAI}>
                         {isAnalyzingAI ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Analyzing...
-                          </>
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
                         ) : (
-                          <>
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Get Analysis
-                          </>
+                          <><Sparkles className="h-4 w-4 mr-2" />Get Analysis</>
                         )}
                       </Button>
                     </div>
-                    <CardDescription>
-                      Get personalized insights and recommendations powered by AI
-                    </CardDescription>
+                    <CardDescription>Get personalized insights powered by Gemini AI</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {isAnalyzingAI ? (
@@ -1549,7 +1444,6 @@ export default function Home() {
                       </div>
                     ) : aiAnalysis ? (
                       <div className="space-y-6">
-                        {/* Overall Score */}
                         <div className="text-center p-4 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-lg">
                           <div className="text-5xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
                             {aiAnalysis.overallScore}
@@ -1557,77 +1451,64 @@ export default function Home() {
                           <p className="text-sm text-muted-foreground mt-1">Overall Score</p>
                         </div>
 
-                        {/* Highlights */}
-                        {aiAnalysis.highlights && aiAnalysis.highlights.length > 0 && (
+                        {aiAnalysis.highlights?.length > 0 && (
                           <div className="space-y-2">
                             <h4 className="font-semibold flex items-center gap-2 text-green-600">
                               <Award className="h-4 w-4" />
                               Highlights
                             </h4>
                             <ul className="space-y-2">
-                              {aiAnalysis.highlights.map((highlight, index) => (
-                                <li key={index} className="flex items-start gap-2 text-sm">
+                              {aiAnalysis.highlights.map((h, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm">
                                   <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                                  <span>{highlight}</span>
+                                  <span>{h}</span>
                                 </li>
                               ))}
                             </ul>
                           </div>
                         )}
 
-                        {/* Areas to Improve */}
-                        {aiAnalysis.areasToImprove && aiAnalysis.areasToImprove.length > 0 && (
+                        {aiAnalysis.areasToImprove?.length > 0 && (
                           <div className="space-y-2">
                             <h4 className="font-semibold flex items-center gap-2 text-amber-600">
                               <AlertCircle className="h-4 w-4" />
                               Areas to Improve
                             </h4>
                             <ul className="space-y-2">
-                              {aiAnalysis.areasToImprove.map((area, index) => (
-                                <li key={index} className="flex items-start gap-2 text-sm">
+                              {aiAnalysis.areasToImprove.map((a, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm">
                                   <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                                  <span>{area}</span>
+                                  <span>{a}</span>
                                 </li>
                               ))}
                             </ul>
                           </div>
                         )}
 
-                        {/* Insights Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="p-3 bg-blue-500/10 rounded-lg">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Droplet className="h-4 w-4 text-blue-500" />
-                              <span className="font-semibold text-sm">Hydration</span>
+                          {[
+                            { icon: <Droplet className="h-4 w-4 text-blue-500" />, label: 'Hydration', text: aiAnalysis.hydrationInsight, bg: 'bg-blue-500/10' },
+                            { icon: <Utensils className="h-4 w-4 text-green-500" />, label: 'Nutrition', text: aiAnalysis.nutritionInsight, bg: 'bg-green-500/10' },
+                            { icon: <Dumbbell className="h-4 w-4 text-purple-500" />, label: 'Exercise', text: aiAnalysis.exerciseInsight, bg: 'bg-purple-500/10' },
+                          ].map(({ icon, label, text, bg }) => (
+                            <div key={label} className={`p-3 ${bg} rounded-lg`}>
+                              <div className="flex items-center gap-2 mb-2">
+                                {icon}
+                                <span className="font-semibold text-sm">{label}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">{text}</p>
                             </div>
-                            <p className="text-xs text-muted-foreground">{aiAnalysis.hydrationInsight}</p>
-                          </div>
-                          <div className="p-3 bg-green-500/10 rounded-lg">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Utensils className="h-4 w-4 text-green-500" />
-                              <span className="font-semibold text-sm">Nutrition</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{aiAnalysis.nutritionInsight}</p>
-                          </div>
-                          <div className="p-3 bg-purple-500/10 rounded-lg">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Dumbbell className="h-4 w-4 text-purple-500" />
-                              <span className="font-semibold text-sm">Exercise</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{aiAnalysis.exerciseInsight}</p>
-                          </div>
+                          ))}
                         </div>
 
-                        {/* Weekly Tip */}
                         <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
                           <div className="flex items-center gap-2 mb-2">
                             <Target className="h-4 w-4 text-orange-500" />
-                            <span className="font-semibold text-sm">Tip for the Week</span>
+                            <span className="font-semibold text-sm">Tip for the Period</span>
                           </div>
                           <p className="text-sm">{aiAnalysis.weeklyTip}</p>
                         </div>
 
-                        {/* Motivational Message */}
                         <div className="p-4 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-lg border border-pink-500/20 text-center">
                           <Sparkles className="h-5 w-5 text-pink-500 mx-auto mb-2" />
                           <p className="text-sm italic">&ldquo;{aiAnalysis.motivationalMessage}&rdquo;</p>
@@ -1637,7 +1518,7 @@ export default function Home() {
                       <div className="text-center py-8">
                         <Brain className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                         <p className="text-muted-foreground">
-                          Click &ldquo;Get Analysis&rdquo; to receive personalized insights about your {summaryPeriod === 'day' ? 'daily' : summaryPeriod === 'week' ? 'weekly' : summaryPeriod === 'month' ? 'monthly' : 'yearly'} fitness performance.
+                          Click &ldquo;Get Analysis&rdquo; to receive personalized insights about your fitness performance.
                         </p>
                       </div>
                     )}
@@ -1647,7 +1528,7 @@ export default function Home() {
             </Tabs>
           </div>
 
-          {/* Sidebar - Calendar */}
+          {/* Sidebar */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -1657,11 +1538,7 @@ export default function Home() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <SidebarCalendar
-                  logs={streakLogs}
-                  selectedDate={date}
-                  onSelectDate={setDate}
-                />
+                <SidebarCalendar logs={streakLogs} selectedDate={date} onSelectDate={setDate} />
               </CardContent>
             </Card>
 
@@ -1673,18 +1550,16 @@ export default function Home() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Water</span>
-                  <span className="text-sm font-medium">{dailyWaterGoal} L</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Calories</span>
-                  <span className="text-sm font-medium">{calorieGoal} kcal</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Exercise</span>
-                  <span className="text-sm font-medium">{exerciseGoal} cal</span>
-                </div>
+                {[
+                  { label: 'Water', value: `${dailyWaterGoal} L` },
+                  { label: 'Calories', value: `${calorieGoal} kcal` },
+                  { label: 'Exercise', value: `${exerciseGoal} cal` },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">{label}</span>
+                    <span className="text-sm font-medium">{value}</span>
+                  </div>
+                ))}
               </CardContent>
             </Card>
 
@@ -1697,9 +1572,7 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 {!isMounted || isLoading ? (
-                  <div className="text-center py-4 text-muted-foreground text-xs">
-                    Loading...
-                  </div>
+                  <div className="text-center py-4 text-muted-foreground text-xs">Loading...</div>
                 ) : (
                   <div className="text-center">
                     <div className="text-3xl font-bold mb-2">
@@ -1707,9 +1580,7 @@ export default function Home() {
                         ((waterIntake / dailyWaterGoal + calories / calorieGoal + exerciseCalories / exerciseGoal) / 3) * 100
                       )}%
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Average completion across all goals
-                    </p>
+                    <p className="text-xs text-muted-foreground">Average completion across all goals</p>
                   </div>
                 )}
               </CardContent>
