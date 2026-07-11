@@ -870,22 +870,23 @@ export default function Home() {
               {exerciseAnalysisError && <p className="text-xs mt-1" style={{ color: "#ffb4ab" }}>{exerciseAnalysisError}</p>}
             </div>
 
-            {/* Category toggle */}
-            <div className="flex gap-2">
-              {(["cardio", "weight-training"] as const).map(cat => (
-                <button key={cat} onClick={() => setExerciseCategory(cat)}
-                  className="flex-1 h-11 rounded-xl font-headline text-sm active:scale-95 transition-all"
-                  style={{
-                    background: exerciseCategory === cat ? C.exercise : C.inputBg,
-                    color: exerciseCategory === cat ? "#351000" : C.variant,
-                    border: `1px solid ${exerciseCategory === cat ? C.exercise : C.outline}`,
-                  }}>
-                  {cat === "cardio"
-                    ? <span className="flex items-center gap-1.5"><IconFlame size={15} />Cardio</span>
-                    : <span className="flex items-center gap-1.5"><IconDumbbell size={15} />Weights</span>
-                  }
-                </button>
-              ))}
+            {/* Category toggle — pill style, both identical shape */}
+            <div className="flex gap-2 p-1 rounded-2xl" style={{ background: C.inputBg, border: `1px solid ${C.outline}` }}>
+              {(["cardio", "weight-training"] as const).map(cat => {
+                const active = exerciseCategory === cat;
+                return (
+                  <button key={cat} onClick={() => setExerciseCategory(cat)}
+                    className="flex-1 h-10 rounded-xl font-headline text-sm active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                    style={{
+                      background: active ? C.exercise : "transparent",
+                      color: active ? "#1a0800" : C.variant,
+                    }}>
+                    {cat === "cardio"
+                      ? <><IconFlame size={15} />Cardio</>
+                      : <><IconDumbbell size={15} />Weights</>}
+                  </button>
+                );
+              })}
             </div>
 
             {exerciseCategory === "cardio" && (
@@ -1139,7 +1140,7 @@ export default function Home() {
       {/* ── Floating bottom navigation ── */}
       <nav className="fixed bottom-4 left-4 right-4 z-40 rounded-2xl pb-safe"
         style={{ background: C.navBg, backdropFilter: "blur(20px)", border: `1px solid ${C.outline}`, boxShadow: isDark ? "0 8px 32px #00000080" : "0 4px 24px rgba(0,0,0,0.12)" }}>
-        <div className="flex items-center justify-around px-2 pt-1.5 pb-2">
+        <div className="flex items-center justify-around px-3 py-2">
           {NAV.map(({ id, Icon, label }) => {
             const isActive = activeTab === id;
             const accentColor = id === "train" ? C.exercise : id === "progress" ? C.nutrition : C.hydration;
@@ -1148,19 +1149,15 @@ export default function Home() {
                 aria-label={`${label} tab`}
                 aria-pressed={isActive}
                 className="flex flex-col items-center justify-center gap-1 rounded-xl transition-all active:scale-90"
-                style={{ minWidth: 72, minHeight: 48 }}>
-                <Icon
-                  size={22}
-                  style={{ color: isActive ? accentColor : C.variant }}
-                  className="transition-colors duration-200"
-                />
-                <span className="font-label text-[11px] uppercase tracking-wide leading-none transition-colors duration-200"
+                style={{ minWidth: 72, minHeight: 52 }}>
+                <Icon size={22} style={{ color: isActive ? accentColor : C.variant }} className="transition-colors duration-150" />
+                <span className="font-label text-[11px] uppercase tracking-wider leading-none transition-colors duration-150"
                   style={{ color: isActive ? accentColor : C.variant }}>
                   {label}
                 </span>
-                {/* Active dot indicator */}
-                <div className="h-[3px] w-4 rounded-full transition-all duration-200"
-                  style={{ background: isActive ? accentColor : "transparent" }} />
+                {/* 2px accent underline — same height always, just changes opacity */}
+                <div className="h-[2px] w-5 rounded-full transition-all duration-200"
+                  style={{ background: accentColor, opacity: isActive ? 1 : 0 }} />
               </button>
             );
           })}
