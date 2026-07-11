@@ -1387,10 +1387,10 @@ export default function Home() {
       {/* ── iOS install banner ── */}
       <InstallPWABanner />
 
-      {/* ── Floating bottom navigation (centered compact pill) ── */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 rounded-2xl pb-safe glass-overlay"
+      {/* ── Floating bottom navigation (full width, compact height) ── */}
+      <nav className="fixed bottom-4 left-4 right-4 z-40 rounded-2xl pb-safe glass-overlay"
         style={{ boxShadow: isDark ? "0 8px 40px rgba(0,0,0,0.6)" : "0 4px 24px rgba(0,0,0,0.10)", border: `1px solid ${C.outlineVar}` }}>
-        <div className="flex items-center gap-1 px-2 py-2">
+        <div className="flex items-center justify-around px-3 py-1.5">
           {NAV.map(({ id, Icon, label }) => {
             const isActive = activeTab === id;
             const accentColor = id === "train" ? C.exercise : id === "progress" ? C.nutrition : C.hydration;
@@ -1398,10 +1398,10 @@ export default function Home() {
               <button key={id} onClick={() => setActiveTab(id)}
                 aria-label={`${label} tab`}
                 aria-pressed={isActive}
-                className="flex flex-col items-center justify-center gap-1 rounded-xl transition-all active:scale-90"
-                style={{ width: 76, minHeight: 52 }}>
-                <Icon size={22} style={{ color: isActive ? accentColor : C.variant }} className="transition-colors duration-150" />
-                <span className="font-label text-[11px] uppercase tracking-wider leading-none transition-colors duration-150"
+                className="flex flex-col items-center justify-center gap-0.5 rounded-xl transition-all active:scale-90"
+                style={{ minWidth: 64, minHeight: 44, paddingTop: 4, paddingBottom: 4 }}>
+                <Icon size={20} style={{ color: isActive ? accentColor : C.variant }} className="transition-colors duration-150" />
+                <span className="font-label text-[10px] uppercase tracking-wider leading-none transition-colors duration-150"
                   style={{ color: isActive ? accentColor : C.variant }}>
                   {label}
                 </span>
