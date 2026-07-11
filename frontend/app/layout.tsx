@@ -1,30 +1,34 @@
 import type { Metadata, Viewport } from "next";
-import { Sora, Manrope, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono, JetBrains_Mono } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
-const sora = Sora({
-  variable: "--font-sora",
+/* ── Kinetic Obsidian Typography ────────────────────────────────────────────
+   Geist — engineered Swiss-inspired sans for all display/body copy
+   JetBrains Mono — reserved for label-caps / data strings
+*/
+const geist = Geist({
+  variable: "--font-geist",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: ["400", "600", "700", "800"],
   display: "swap",
   preload: true,
 });
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   display: "swap",
-  preload: true,
+  preload: false,
 });
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
   subsets: ["latin"],
-  weight: ["500"],
+  weight: ["500", "600"],
   display: "swap",
-  preload: false, // only used for data labels — lazy is fine
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -44,9 +48,7 @@ export const metadata: Metadata = {
       },
     ],
   },
-  formatDetection: {
-    telephone: false,
-  },
+  formatDetection: { telephone: false },
   openGraph: {
     type: "website",
     title: "FitTrack – Kinetic Performance",
@@ -58,12 +60,8 @@ export const metadata: Metadata = {
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
     ],
-    apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
-    ],
-    other: [
-      { rel: "mask-icon", url: "/icon-512x512.png" },
-    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    other: [{ rel: "mask-icon", url: "/icon-512x512.png" }],
   },
   manifest: "/manifest.webmanifest",
 };
@@ -75,20 +73,15 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)",  color: "#080808" },
-    { media: "(prefers-color-scheme: light)", color: "#f0f2f5" },
+    { media: "(prefers-color-scheme: dark)",  color: "#131313" },
+    { media: "(prefers-color-scheme: light)", color: "#f4f4f5" },
   ],
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="dark">
       <head>
-        {/* Preconnect to critical third-party origins */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://firestore.googleapis.com" />
@@ -96,19 +89,17 @@ export default function RootLayout({
         <link rel="preconnect" href="https://securetoken.googleapis.com" />
         <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
 
-        {/* iOS full-screen webapp */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="FitTrack" />
 
-        {/* Prevent tap callout & selection highlight on iOS */}
         <style>{`
           * { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
           input, textarea, select { -webkit-appearance: none; }
         `}</style>
       </head>
-      <body className={`${sora.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased font-body`}>
+      <body className={`${geist.variable} ${geistMono.variable} ${jetbrainsMono.variable} antialiased`}>
         {children}
         <ServiceWorkerRegister />
       </body>

@@ -30,40 +30,44 @@ import {
 } from "@/components/icons";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
-   Kinetic Performance palette (from Stitch project 4530245392740715731)
-   Dark  = original Stitch design
-   Light = bright counterpart keeping the accent personality
+   Kinetic Obsidian — Hyper-Performance dark-first design system.
+   Dark:  Obsidian foundation (#131313) with neon data accents.
+   Light: Bright counterpart preserving accent personality.
 */
 const DARK = {
-  hydration: "#00daf3",
-  nutrition:  "#9ffb00",
-  exercise:  "#ff6b00",
-  surface:   "#1c1c1e",
-  bg:        "#080808",
-  bgHero:    "radial-gradient(ellipse at 50% 0%, #00daf315 0%, #080808 70%)",
-  onSurface: "#e5e2e1",
-  variant:   "#bac9cc",
-  outline:   "#3b494c",
-  navBg:     "#1c1c1edd",
-  headerBg:  "#080808cc",
-  inputBg:   "#2a2a2a",
-  badgeBg:   "#2a2a2a",
+  hydration: "#00daf3",   /* Electric Cyan — primary / hydration    */
+  nutrition:  "#b9f600",  /* Lime          — nutrition / metabolic  */
+  exercise:  "#ff6b00",   /* Kinetic Orange— workouts / effort      */
+  streak:    "#ff2d7a",   /* Hyper Pink    — streak / urgency       */
+  surface:   "#1c1b1b",   /* L1 card surface                        */
+  surfaceHigh: "#2a2a2a", /* L1 card high                           */
+  bg:        "#131313",   /* L0 obsidian base                       */
+  bgHero:    "radial-gradient(ellipse at 50% 0%, #00daf314 0%, #131313 65%)",
+  onSurface: "#e5e2e1",   /* on-surface                             */
+  variant:   "#bac9cc",   /* on-surface-variant                     */
+  outline:   "#222222",   /* border                                 */
+  outlineVar:"#3b494c",   /* outline-variant                        */
+  navBg:     "rgba(19,19,19,0.88)",
+  headerBg:  "rgba(19,19,19,0.90)",
+  inputBg:   "#201f1f",   /* surface-container                      */
 } as const;
 
 const LIGHT = {
   hydration: "#0099bb",
   nutrition:  "#5a9200",
   exercise:  "#e05a00",
+  streak:    "#c4005e",
   surface:   "#ffffff",
-  bg:        "#f0f2f5",
-  bgHero:    "radial-gradient(ellipse at 50% 0%, #0099bb18 0%, #f0f2f5 70%)",
-  onSurface: "#1a1a1a",
+  surfaceHigh: "#f0f0f0",
+  bg:        "#f4f4f5",
+  bgHero:    "radial-gradient(ellipse at 50% 0%, #0099bb14 0%, #f4f4f5 65%)",
+  onSurface: "#131313",
   variant:   "#667080",
-  outline:   "#d4d8dc",
+  outline:   "#e0e0e0",
+  outlineVar:"#cccccc",
   navBg:     "rgba(255,255,255,0.92)",
-  headerBg:  "rgba(240,242,245,0.85)",
-  inputBg:   "#f3f4f6",
-  badgeBg:   "#f3f4f6",
+  headerBg:  "rgba(244,244,245,0.90)",
+  inputBg:   "#f3f3f3",
 } as const;
 
 /* ─── Types ──────────────────────────────────────────────────────────────────*/
@@ -124,7 +128,7 @@ function ConcentricRings({
                   stroke={color} strokeWidth="12"
                   strokeDasharray={circ} strokeDashoffset={dash}
                   strokeLinecap="round"
-                  style={{ transition: "stroke-dashoffset 0.8s ease", filter: `drop-shadow(0 0 6px ${color}55)` }} />
+                  style={{ transition: "stroke-dashoffset 0.8s ease", filter: `drop-shadow(0 0 10px ${color}55)` }} />
               </g>
             );
           })}
@@ -531,7 +535,7 @@ export default function Home() {
   /* ─── Splash / sign-in ───────────────────────────────────────────────────────*/
 
   if (authLoading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: isDark ? "#080808" : "#f0f2f5" }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}>
       <div className="flex flex-col items-center gap-6">
         <div className="w-20 h-20 rounded-3xl flex items-center justify-center glass-card" style={{ color: DARK.hydration }}>
           <IconDumbbell size={40} />
@@ -606,11 +610,9 @@ export default function Home() {
     <div className="min-h-screen flex flex-col" style={{ background: C.bg, color: C.onSurface }}>
 
       {/* ── Top app bar ── */}
-      <header className="sticky top-0 z-30 px-5 py-3 flex items-center justify-between"
+      <header className="sticky top-0 z-30 px-5 py-3 flex items-center justify-between glass-overlay"
         style={{
-          background: C.headerBg,
-          backdropFilter: "blur(20px)",
-          borderBottom: `1px solid ${C.outline}40`,
+          borderBottom: `1px solid ${C.outlineVar}`,
           paddingTop: "max(env(safe-area-inset-top), 0.75rem)",
         }}>
         <div className="flex items-center gap-3">
@@ -1138,8 +1140,8 @@ export default function Home() {
       <InstallPWABanner />
 
       {/* ── Floating bottom navigation ── */}
-      <nav className="fixed bottom-4 left-4 right-4 z-40 rounded-2xl pb-safe"
-        style={{ background: C.navBg, backdropFilter: "blur(20px)", border: `1px solid ${C.outline}`, boxShadow: isDark ? "0 8px 32px #00000080" : "0 4px 24px rgba(0,0,0,0.12)" }}>
+      <nav className="fixed bottom-4 left-4 right-4 z-40 rounded-2xl pb-safe glass-overlay"
+        style={{ boxShadow: isDark ? "0 8px 40px rgba(0,0,0,0.6)" : "0 4px 24px rgba(0,0,0,0.10)", border: `1px solid ${C.outlineVar}` }}>
         <div className="flex items-center justify-around px-3 py-2">
           {NAV.map(({ id, Icon, label }) => {
             const isActive = activeTab === id;

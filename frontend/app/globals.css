@@ -6,7 +6,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-manrope);
+  --font-sans: var(--font-geist);
   --font-mono: var(--font-jetbrains);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -40,123 +40,193 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
 }
 
-/* ── Kinetic Performance Design System ────────────────────────────────────── */
+/* ── Kinetic Obsidian Design System ──────────────────────────────────────────
+   Dark-mode: Hyper-Performance — obsidian foundation, neon data points.
+   Light-mode: Bright counterpart preserving accent personality.
+*/
 
 :root {
-  --radius: 1rem;
+  /* Kinetic Obsidian base radius — 0.5rem (8px) */
+  --radius: 0.5rem;
 
-  /* Base surfaces */
-  --background: #080808;
+  /* ── Level 0 – Obsidian base ── */
+  --background: #131313;
   --foreground: #e5e2e1;
-  --card: #1c1c1e;
+
+  /* ── Level 1 – Card surfaces ── */
+  --card:            #1c1b1b;
   --card-foreground: #e5e2e1;
-  --popover: #1c1c1e;
+
+  /* ── Level 2 – Overlay / modal ── */
+  --popover:            #201f1f;
   --popover-foreground: #e5e2e1;
 
-  /* Brand / accent */
-  --primary: #c3f5ff;
-  --primary-foreground: #00363d;
+  /* ── Brand / primary (Electric Cyan) ── */
+  --primary:            #00daf3;
+  --primary-foreground: #001f24;
 
-  /* Muted surfaces */
-  --secondary: #201f1f;
+  /* ── Muted surfaces (tonal layers) ── */
+  --secondary:            #201f1f;
   --secondary-foreground: #e5e2e1;
-  --muted: #201f1f;
-  --muted-foreground: #bac9cc;
-  --accent: #2a2a2a;
-  --accent-foreground: #e5e2e1;
+  --muted:                #201f1f;
+  --muted-foreground:     #bac9cc;
+  --accent:               #2a2a2a;
+  --accent-foreground:    #e5e2e1;
 
-  /* Utility */
+  /* ── Utility ── */
   --destructive: #ffb4ab;
-  --border: rgba(255, 255, 255, 0.1);
-  --input: #2a2a2a;
-  --ring: #00daf3;
+  --border:      #222222;
+  --input:       #201f1f;
+  --ring:        #00daf3;
 
-  /* Charts */
-  --chart-1: #00e5ff;
-  --chart-2: #9ffb00;
-  --chart-3: #ff6b00;
-  --chart-4: #c3f5ff;
-  --chart-5: #ffb693;
+  /* ── Data chart / category colors ── */
+  --chart-1: #00daf3;   /* Hydration – Electric Cyan */
+  --chart-2: #b9f600;   /* Nutrition – Lime          */
+  --chart-3: #ff6b00;   /* Exercise  – Kinetic Orange */
+  --chart-4: #ff2d7a;   /* Streak    – Hyper Pink     */
+  --chart-5: #c3f5ff;   /* Highlight / secondary cyan */
 
-  /* Sidebar */
-  --sidebar: #131313;
-  --sidebar-foreground: #e5e2e1;
-  --sidebar-primary: #00daf3;
-  --sidebar-primary-foreground: #001f24;
-  --sidebar-accent: #201f1f;
+  /* ── Sidebar ── */
+  --sidebar:                   #0e0e0e;
+  --sidebar-foreground:        #e5e2e1;
+  --sidebar-primary:           #00daf3;
+  --sidebar-primary-foreground:#001f24;
+  --sidebar-accent:            #201f1f;
   --sidebar-accent-foreground: #e5e2e1;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #00daf3;
+  --sidebar-border:            #222222;
+  --sidebar-ring:              #00daf3;
 
-  /* Kinetic accent palette (used directly in page) */
+  /* ── Kinetic accent palette (used in JS tokens) ── */
   --accent-hydration: #00daf3;
-  --accent-nutrition: #9ffb00;
-  --accent-exercise: #ff6b00;
-  --surface-glass: #1c1c1e;
+  --accent-nutrition: #b9f600;
+  --accent-exercise:  #ff6b00;
+  --accent-streak:    #ff2d7a;
 }
 
-.dark {
-  --background: #080808;
-  --foreground: #e5e2e1;
+/* Light mode overrides */
+html:not(.dark) {
+  --background:      #f4f4f5;
+  --foreground:      #131313;
+  --card:            #ffffff;
+  --card-foreground: #131313;
+  --popover:         #ffffff;
+  --popover-foreground: #131313;
+  --primary:         #006875;
+  --primary-foreground: #ffffff;
+  --secondary:       #f0f0f0;
+  --secondary-foreground: #131313;
+  --muted:           #f0f0f0;
+  --muted-foreground:#667080;
+  --accent:          #e8e8e8;
+  --accent-foreground:#131313;
+  --border:          #e0e0e0;
+  --input:           #f3f3f3;
+  --ring:            #006875;
+  --accent-hydration: #0099bb;
+  --accent-nutrition: #5a9200;
+  --accent-exercise:  #e05a00;
 }
 
-/* ── Font helpers ──────────────────────────────────────────────────────────── */
-
+/* ── Typography helpers (Kinetic Obsidian spec) ─────────────────────────────
+   display-lg:   Geist 48px 800 -0.04em
+   headline-lg:  Geist 32px 700 -0.02em
+   headline-md:  Geist 24px 600 -0.01em
+   body-md:      Geist 16px 400  0em
+   label-caps:   JetBrains Mono 12px 600 0.1em uppercase
+   metrics-xl:   Geist 64px 800 -0.05em
+*/
 .font-display {
-  font-family: var(--font-sora), sans-serif;
-  font-weight: 700;
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }
 .font-headline {
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.font-headline-md {
+  font-family: var(--font-geist), system-ui, sans-serif;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .font-body {
-  font-family: var(--font-manrope), sans-serif;
+  font-family: var(--font-geist), system-ui, sans-serif;
   font-weight: 400;
 }
 .font-label {
-  font-family: var(--font-jetbrains), monospace;
-  font-weight: 500;
+  font-family: var(--font-jetbrains), var(--font-geist-mono), monospace;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.metrics-xl {
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 64px;
+  line-height: 1;
+  letter-spacing: -0.05em;
 }
 
-/* ── Glassmorphism card ─────────────────────────────────────────────────────── */
+/* ── Elevation – Tonal layers (Kinetic Obsidian spec) ───────────────────────
+   L0 Base:        #131313
+   L1 Card:        #1c1b1b  + 1px border #222
+   L2 Glass/Modal: semi-transparent + 20px blur
+*/
 
+/* Level 1 – Standard data card */
 .glass-card {
-  background: #1c1c1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #1c1b1b;
+  border: 1px solid #222222;
+  border-radius: 1rem; /* cards: rounded-xl = 16px per spec */
+}
+
+/* Level 2 – Glass overlay (nav, modals, headers) */
+.glass-overlay {
+  background: rgba(19, 19, 19, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
 
-/* Light mode glass card */
+/* Light mode variants */
 html:not(.dark) .glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+  border: 1px solid #e8e8e8;
+  box-shadow: 0 1px 12px rgba(0, 0, 0, 0.06);
+}
+html:not(.dark) .glass-overlay {
+  background: rgba(244, 244, 245, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-/* ── Glow effects ────────────────────────────────────────────────────────────── */
+/* ── Kinetic Glow effects (10-20px, 0.25-0.3 opacity per spec) ──────────────
+   Applied to active/completed elements, not background cards.
+*/
+.glow-cyan   { filter: drop-shadow(0 0 12px rgba(0, 218, 243, 0.30)); }
+.glow-lime   { filter: drop-shadow(0 0 12px rgba(185, 246,   0, 0.30)); }
+.glow-orange { filter: drop-shadow(0 0 12px rgba(255, 107,   0, 0.30)); }
+.glow-pink   { filter: drop-shadow(0 0 12px rgba(255,  45, 122, 0.30)); }
 
-.glow-cyan  { box-shadow: 0 0 15px rgba(0, 218, 243, 0.25); }
-.glow-green { box-shadow: 0 0 15px rgba(159, 251,   0, 0.25); }
-.glow-orange{ box-shadow: 0 0 15px rgba(255, 107,   0, 0.25); }
+/* Box-shadow glow variants (for bordered elements) */
+.glow-box-cyan   { box-shadow: 0 0 16px rgba(0, 218, 243, 0.25); }
+.glow-box-lime   { box-shadow: 0 0 16px rgba(185, 246,   0, 0.25); }
+.glow-box-orange { box-shadow: 0 0 16px rgba(255, 107,   0, 0.25); }
 
-/* ── Safe area for iOS notch / Dynamic Island ──────────────────────────────── */
+/* ── Performance chip (10% bg, 100% text, per spec) ────────────────────────*/
+.chip-cyan   { background: rgba(0, 218, 243, 0.10); color: #00daf3; }
+.chip-lime   { background: rgba(185, 246,   0, 0.10); color: #b9f600; }
+.chip-orange { background: rgba(255, 107,   0, 0.10); color: #ff6b00; }
 
-.pb-safe {
-  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
-}
+/* ── Safe area insets (iOS notch / Dynamic Island) ──────────────────────────*/
+.pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+.pt-safe { padding-top: max(env(safe-area-inset-top), 0.75rem); }
 
-/* Top safe area — use on sticky headers in standalone PWA mode */
-.pt-safe {
-  padding-top: max(env(safe-area-inset-top), 0.75rem);
-}
-
-/* ── iOS HIG: Tab content fade transition ─────────────────────────────────── */
-/* Triggers automatically via Radix data-state="active" attribute */
+/* ── Tab content fade-in animation (HIG: motion = meaning) ─────────────────*/
 [role="tabpanel"][data-state="active"] {
   animation: tabFadeIn 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
@@ -165,86 +235,65 @@ html:not(.dark) .glass-card {
   to   { opacity: 1; transform: translateY(0);   }
 }
 
-/* ── iOS HIG: Swipe-to-delete row ─────────────────────────────────────────── */
-.swipe-row {
-  position: relative;
-  overflow: hidden;
-  touch-action: pan-y; /* allow vertical scroll; horizontal = our gesture */
-}
-.swipe-row__content {
-  will-change: transform;
-  transition: transform 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-.swipe-row__delete {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  padding: 0 1.25rem;
-  background: #ff3b30; /* Apple systemRed */
+/* ── Swipe-to-delete row (iOS trailing-swipe pattern) ───────────────────────*/
+.swipe-row             { position: relative; overflow: hidden; touch-action: pan-y; }
+.swipe-row__content    { will-change: transform; transition: transform 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.swipe-row__delete     {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  display: flex; align-items: center; padding: 0 1.25rem;
+  background: #ff3b30;
   transform: translateX(100%);
   transition: transform 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  border-radius: 0 0.75rem 0.75rem 0;
+  border-radius: 0 1rem 1rem 0;
 }
-.swipe-row--open .swipe-row__content  { transform: translateX(-72px); }
-.swipe-row--open .swipe-row__delete   { transform: translateX(0); }
+.swipe-row--open .swipe-row__content { transform: translateX(-72px); }
+.swipe-row--open .swipe-row__delete  { transform: translateX(0); }
 
-/* ── Base ─────────────────────────────────────────────────────────────────────── */
-
+/* ── Base layer ─────────────────────────────────────────────────────────────*/
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    /* iOS HIG: remove tap flash on all elements */
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* iOS HIG: touch-action manipulation removes 300ms tap delay */
-  button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
+  /* iOS HIG: touch-action removes 300ms tap delay */
+  button, a, [role="button"] {
     touch-action: manipulation;
     cursor: pointer;
   }
 
   body {
-    background-color: #080808;
+    background-color: #131313;
     color: #e5e2e1;
+    font-family: var(--font-geist), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    -webkit-text-size-adjust: 100%; /* prevent iOS auto font scaling */
+    -webkit-text-size-adjust: 100%;
     transition: background-color 0.3s ease, color 0.2s ease;
   }
+
   html:not(.dark) body {
-    background-color: #f0f2f5;
-    color: #1a1a1a;
+    background-color: #f4f4f5;
+    color: #131313;
   }
 
-  /* iOS HIG: Minimum 11pt text everywhere — raise sub-12px classes */
-  .font-label { font-size: max(0.75rem, 11px); } /* was sometimes 9-10px */
+  /* Prevent iOS zoom on input focus — must be ≥ 16px */
+  input, textarea, select { font-size: 16px; }
 
-  /* Prevent iOS zoom on input focus (inputs must be ≥16px font-size) */
-  input, textarea, select {
-    font-size: 16px;
-  }
-
-  /* Prevent horizontal overflow */
-  html, body {
-    overflow-x: hidden;
-    max-width: 100vw;
-  }
+  html, body { overflow-x: hidden; max-width: 100vw; }
 
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* iOS HIG: momentum scroll for content areas */
+  /* Momentum scroll + overscroll containment */
   .overflow-y-auto {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
   }
 
-  /* Scrollbar styling */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: #131313; }
-  ::-webkit-scrollbar-thumb { background: #353534; border-radius: 2px; }
+  /* Subtle scrollbar */
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
 }
