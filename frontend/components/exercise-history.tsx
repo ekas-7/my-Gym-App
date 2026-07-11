@@ -4,7 +4,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trash2, Sparkles, Dumbbell, Heart, Timer, Zap } from 'lucide-react';
+import { IconTrash, IconSparkle, IconDumbbell, IconHeart, IconTimer, IconZap } from '@/components/icons';
 import { IExercise } from '@/models/Exercise';
 
 interface ExerciseHistoryProps {
@@ -18,8 +18,8 @@ const categoryColors: Record<string, string> = {
 };
 
 const categoryIcons: Record<string, React.ReactNode> = {
-  cardio: <Heart className="h-3 w-3" />,
-  'weight-training': <Dumbbell className="h-3 w-3" />,
+  cardio: <IconHeart size={12} />,
+  'weight-training': <IconDumbbell size={12} />,
 };
 
 const muscleGroupEmoji: Record<string, string> = {
@@ -68,7 +68,7 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
                     
                     {exercise.isAIAnalyzed && (
                       <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
-                        <Sparkles className="h-3 w-3 mr-1 fill-purple-500" />
+                        <IconSparkle size={12} className="mr-1" />
                         AI
                       </Badge>
                     )}
@@ -116,7 +116,7 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
                         {exercise.duration && (
                           <div className="bg-red-50 dark:bg-red-950/30 p-2.5 rounded-md border border-red-100 dark:border-red-900">
                             <div className="text-muted-foreground flex items-center gap-1 mb-0.5">
-                              <Timer className="h-3 w-3" />
+                              <IconTimer size={12} />
                               Duration
                             </div>
                             <div className="font-bold text-red-700 dark:text-red-400 text-base">{exercise.duration} min</div>
@@ -135,7 +135,7 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
                     {exercise.caloriesBurned && (
                       <div className="bg-yellow-50 dark:bg-yellow-950/30 p-2.5 rounded-md border border-yellow-100 dark:border-yellow-900">
                         <div className="text-muted-foreground flex items-center gap-1 mb-0.5">
-                          <Zap className="h-3 w-3" />
+                          <IconZap size={12} />
                           Calories
                         </div>
                         <div className="font-bold text-yellow-700 dark:text-yellow-400 text-base">{exercise.caloriesBurned}</div>
@@ -164,7 +164,7 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
                   onClick={() => exercise.id && onDelete(exercise.id)}
                   className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50 shrink-0"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <IconTrash size={16} />
                 </Button>
               </div>
             </Card>
@@ -175,7 +175,7 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
       {/* Summary Stats */}
       <Card className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200 dark:border-blue-900">
         <div className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <Dumbbell className="h-4 w-4" />
+          <IconDumbbell size={16} />
           Today's Summary
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

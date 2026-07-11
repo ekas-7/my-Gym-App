@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Edit2, Save, X } from "lucide-react";
+import { IconCheck, IconEdit, IconSave, IconX } from "@/components/icons";
 
 interface CustomizableExerciseItemProps {
   name: string;
@@ -83,11 +83,11 @@ export function CustomizableExerciseItem({
 
         <div className="flex gap-2">
           <Button size="sm" onClick={handleSave} className="flex-1">
-            <Save className="h-3 w-3 mr-1" />
+            <IconSave size={12} className="mr-1" />
             Save & Add
           </Button>
           <Button size="sm" variant="outline" onClick={handleCancel}>
-            <X className="h-3 w-3 mr-1" />
+            <IconX size={12} className="mr-1" />
             Cancel
           </Button>
         </div>
@@ -118,7 +118,7 @@ export function CustomizableExerciseItem({
         </div>
         {isCompleted && (
           <Badge variant="secondary" className="ml-2">
-            <Check className="h-3 w-3" />
+            <IconCheck size={12} />
           </Badge>
         )}
       </Button>
@@ -129,7 +129,7 @@ export function CustomizableExerciseItem({
         onClick={() => setIsEditing(true)}
         className="h-auto py-3 px-3"
       >
-        <Edit2 className="h-4 w-4" />
+        <IconEdit size={16} />
       </Button>
     </div>
   );

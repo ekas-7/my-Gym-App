@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check } from "lucide-react";
+import { IconCheck } from "@/components/icons";
 
 interface CardioItemProps {
   name: string;
@@ -22,7 +22,7 @@ export function CardioItem({ name, duration, isCompleted, onToggle }: CardioItem
       </div>
       {isCompleted && (
         <Badge variant="secondary" className="ml-2">
-          <Check className="h-3 w-3" />
+          <IconCheck size={12} />
         </Badge>
       )}
     </Button>

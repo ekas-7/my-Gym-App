@@ -20,8 +20,12 @@ import { MealHistory, MealTypeSelect } from "@/components/meal-history";
 import { ExerciseHistory } from "@/components/exercise-history";
 import { WeightGraph } from "@/components/weight-graph";
 import { cardioExercises, weightTrainingCategories } from "@/lib/exercises";
-import { Loader2 } from "lucide-react";
 import { InstallPWABanner } from "@/components/install-pwa-banner";
+import {
+  IconDroplet, IconUtensils, IconDumbbell, IconScale, IconFlame, IconBarChart,
+  IconSun, IconMoon, IconSparkle, IconBrain, IconSpinner, IconCheck, IconTrendingUp,
+  IconGlass, IconBottle, IconFile, IconBraces, IconApple, IconShield,
+} from "@/components/icons";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
    Kinetic Performance palette (from Stitch project 4530245392740715731)
@@ -161,12 +165,12 @@ function Gauge({ value, max, color }: { value: number; max: number; color: strin
 /* ─── Bottom nav ─────────────────────────────────────────────────────────────*/
 
 const NAV = [
-  { id: "hydration", emoji: "💧", label: "Water" },
-  { id: "diet",      emoji: "🥗", label: "Diet"  },
-  { id: "exercise",  emoji: "🏋️", label: "Train" },
-  { id: "weight",    emoji: "⚖️", label: "Weight"},
-  { id: "streak",    emoji: "🔥", label: "Streak"},
-  { id: "summary",   emoji: "📊", label: "Stats" },
+  { id: "hydration", Icon: IconDroplet,  label: "Water"  },
+  { id: "diet",      Icon: IconUtensils, label: "Diet"   },
+  { id: "exercise",  Icon: IconDumbbell, label: "Train"  },
+  { id: "weight",    Icon: IconScale,    label: "Weight" },
+  { id: "streak",    Icon: IconFlame,    label: "Streak" },
+  { id: "summary",   Icon: IconBarChart, label: "Stats"  },
 ] as const;
 
 /* ─── Helpers ────────────────────────────────────────────────────────────────*/
@@ -496,8 +500,10 @@ export default function Home() {
   if (authLoading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: isDark ? "#080808" : "#f0f2f5" }}>
       <div className="flex flex-col items-center gap-6">
-        <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl glass-card">🏋️</div>
-        <Loader2 className="h-5 w-5 animate-spin" style={{ color: DARK.hydration }} />
+        <div className="w-20 h-20 rounded-3xl flex items-center justify-center glass-card" style={{ color: DARK.hydration }}>
+          <IconDumbbell size={40} />
+        </div>
+        <IconSpinner size={20} className="animate-spin" style={{ color: DARK.hydration }} />
       </div>
     </div>
   );
@@ -508,13 +514,16 @@ export default function Home() {
 
       {/* Theme toggle on sign-in screen */}
       <button onClick={toggleTheme}
-        className="absolute top-5 right-5 w-10 h-10 rounded-full glass-card flex items-center justify-center text-xl active:scale-90 transition-transform">
-        {isDark ? "☀️" : "🌙"}
+        className="absolute top-5 right-5 w-10 h-10 rounded-full glass-card flex items-center justify-center active:scale-90 transition-transform"
+        style={{ color: C.variant }}>
+        {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
       </button>
 
       <div className="text-center space-y-4">
-        <div className="w-24 h-24 rounded-[28px] glass-card flex items-center justify-center text-5xl mx-auto"
-          style={{ boxShadow: `0 0 40px ${C.hydration}30` }}>🏋️</div>
+        <div className="w-24 h-24 rounded-[28px] glass-card flex items-center justify-center mx-auto"
+          style={{ boxShadow: `0 0 40px ${C.hydration}30`, color: C.hydration }}>
+          <IconDumbbell size={48} />
+        </div>
         <h1 className="font-display text-4xl" style={{ color: C.onSurface }}>FitTrack</h1>
         <p className="font-body text-sm max-w-xs mx-auto" style={{ color: C.variant }}>
           Kinetic Performance — track hydration, nutrition &amp; training in one place
@@ -524,14 +533,14 @@ export default function Home() {
       {/* Feature pills */}
       <div className="flex flex-wrap justify-center gap-2 max-w-xs">
         {[
-          { emoji: "💧", label: "Hydration", color: C.hydration },
-          { emoji: "🥗", label: "AI Nutrition", color: C.nutrition },
-          { emoji: "🏋️", label: "Workouts", color: C.exercise },
-          { emoji: "🔥", label: "Streaks", color: C.exercise },
-        ].map(({ emoji, label, color }) => (
+          { Icon: IconDroplet,  label: "Hydration",    color: C.hydration },
+          { Icon: IconApple,    label: "AI Nutrition",  color: C.nutrition },
+          { Icon: IconDumbbell, label: "Workouts",      color: C.exercise },
+          { Icon: IconFlame,    label: "Streaks",       color: C.exercise },
+        ].map(({ Icon, label, color }) => (
           <div key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-headline glass-card"
             style={{ color, border: `1px solid ${color}30` }}>
-            {emoji} {label}
+            <Icon size={13} /> {label}
           </div>
         ))}
       </div>
@@ -549,7 +558,9 @@ export default function Home() {
         Continue with Google
       </button>
 
-      <p className="font-label text-xs" style={{ color: C.variant }}>Your data is private and encrypted</p>
+      <p className="font-label text-xs flex items-center gap-1.5" style={{ color: C.variant }}>
+        <IconShield size={13} /> Your data is private and encrypted
+      </p>
     </div>
   );
 
@@ -581,9 +592,10 @@ export default function Home() {
         <div className="flex items-center gap-3">
           {/* Theme toggle */}
           <button onClick={toggleTheme}
-            className="w-10 h-10 rounded-full flex items-center justify-center glass-card text-xl active:scale-90 transition-transform"
+            className="w-10 h-10 rounded-full flex items-center justify-center glass-card active:scale-90 transition-transform"
+            style={{ color: C.variant }}
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}>
-            {isDark ? "☀️" : "🌙"}
+            {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
           </button>
           <div className="text-right">
             <div className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>Today</div>
@@ -599,7 +611,7 @@ export default function Home() {
         style={{ background: isDark ? undefined : `linear-gradient(180deg, #0099bb08 0%, transparent 100%)` }}>
         {isLoading ? (
           <div className="h-52 flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin" style={{ color: C.hydration }} />
+            <IconSpinner size={24} className="animate-spin" style={{ color: C.hydration }} />
           </div>
         ) : (
           <ConcentricRings
@@ -619,7 +631,9 @@ export default function Home() {
           <TabsContent value="hydration" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
             <div className="flex items-end justify-between">
               <div>
-                <h2 className="font-headline text-title-md" style={{ color: C.onSurface }}>Hydration</h2>
+                <h2 className="font-headline text-title-md flex items-center gap-2" style={{ color: C.onSurface }}>
+                  <IconDroplet size={20} style={{ color: C.hydration }} /> Hydration
+                </h2>
                 <p className="font-label text-[11px]" style={{ color: C.variant }}>{waterIntake.toFixed(2)}L / {dailyWaterGoal}L Target</p>
               </div>
               <button onClick={() => { setWaterIntake(0); updateLog({ waterLiters: 0 }, 0); }}
@@ -638,15 +652,15 @@ export default function Home() {
             {/* Quick add buttons */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Glass", amount: 0.25, icon: "🥛" },
-                { label: "Bottle", amount: 0.5, icon: "🍶" },
-                { label: "Jug", amount: 1, icon: "🫙" },
-              ].map(({ label, amount, icon }) => (
+                { label: "Glass", amount: 0.25, Icon: IconGlass },
+                { label: "Bottle", amount: 0.5,  Icon: IconBottle },
+                { label: "Jug",    amount: 1,     Icon: IconDroplet },
+              ].map(({ label, amount, Icon }) => (
                 <button key={label}
                   onClick={() => { const n = Math.min(waterIntake + amount, dailyWaterGoal * 2); setWaterIntake(n); updateLog({ waterLiters: n }, n); }}
                   className="glass-card rounded-xl p-3 text-center active:scale-95 transition-all"
                   style={{ border: `1px solid ${C.hydration}30` }}>
-                  <span className="block text-2xl mb-1">{icon}</span>
+                  <span className="flex justify-center mb-1" style={{ color: C.hydration }}><Icon size={24} /></span>
                   <span className="font-label text-[10px] block" style={{ color: C.variant }}>{label}</span>
                   <span className="font-headline text-sm" style={{ color: C.onSurface }}>{amount * 1000}ml</span>
                 </button>
@@ -670,7 +684,7 @@ export default function Home() {
                       background: waterIntake >= t ? `${C.hydration}20` : `${C.surface}60`,
                       border: `1px solid ${waterIntake >= t ? C.hydration + "50" : C.outline}`,
                     }}>
-                    {waterIntake >= t && <span className="text-lg">💧</span>}
+                    {waterIntake >= t && <IconDroplet size={18} style={{ color: C.hydration }} />}
                   </div>
                 );
               })}
@@ -679,7 +693,9 @@ export default function Home() {
 
           {/* ── DIET ──────────────────────────────────────────────────────── */}
           <TabsContent value="diet" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
-            <h2 className="font-headline text-title-md" style={{ color: C.onSurface }}>🥗 Nutrition Macros</h2>
+            <h2 className="font-headline text-title-md flex items-center gap-2" style={{ color: C.onSurface }}>
+              <IconUtensils size={20} style={{ color: C.nutrition }} /> Nutrition Macros
+            </h2>
 
             {/* Macro bars */}
             <div className="glass-card rounded-xl p-5 space-y-5">
@@ -718,7 +734,7 @@ export default function Home() {
                   <button onClick={analyzeFood} disabled={isAnalyzing || !foodDescription.trim()}
                     className="px-4 rounded-xl font-headline text-sm active:scale-95 transition-all disabled:opacity-40"
                     style={{ background: C.nutrition, color: "#102000" }}>
-                    {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : "✨ AI"}
+                    {isAnalyzing ? <IconSpinner size={16} className="animate-spin" /> : <><IconSparkle size={14} className="inline mr-1" />AI</>}
                   </button>
                 </div>
                 {analysisError && <p className="text-xs mt-1" style={{ color: "#ffb4ab" }}>{analysisError}</p>}
@@ -739,7 +755,9 @@ export default function Home() {
           {/* ── EXERCISE ──────────────────────────────────────────────────── */}
           <TabsContent value="exercise" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
             <div className="flex items-end justify-between">
-              <h2 className="font-headline text-title-md" style={{ color: C.onSurface }}>🏋️ Training</h2>
+              <h2 className="font-headline text-title-md flex items-center gap-2" style={{ color: C.onSurface }}>
+                <IconDumbbell size={20} style={{ color: C.exercise }} /> Training
+              </h2>
               <span className="font-label text-xs" style={{ color: C.variant }}>{exerciseCalories} / {exerciseGoal} cal</span>
             </div>
             <Gauge value={exerciseCalories} max={exerciseGoal} color={C.exercise} />
@@ -755,9 +773,9 @@ export default function Home() {
                   style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
                 <button onClick={analyzeExercise} disabled={isAnalyzingExercise || !exerciseDescription.trim()}
                   className="px-4 rounded-xl font-headline text-sm active:scale-95 transition-all disabled:opacity-40"
-                  style={{ background: C.exercise, color: "#351000" }}>
-                  {isAnalyzingExercise ? <Loader2 className="h-4 w-4 animate-spin" /> : "✨ AI"}
-                </button>
+                    style={{ background: C.exercise, color: "#351000" }}>
+                  {isAnalyzingExercise ? <IconSpinner size={16} className="animate-spin" /> : <><IconSparkle size={14} className="inline mr-1" />AI</>}
+                  </button>
               </div>
               {exerciseAnalysisError && <p className="text-xs mt-1" style={{ color: "#ffb4ab" }}>{exerciseAnalysisError}</p>}
             </div>
@@ -772,7 +790,10 @@ export default function Home() {
                     color: exerciseCategory === cat ? "#351000" : C.variant,
                     border: `1px solid ${exerciseCategory === cat ? C.exercise : C.outline}`,
                   }}>
-                  {cat === "cardio" ? "🏃 Cardio" : "🏋️ Weights"}
+                  {cat === "cardio"
+                    ? <span className="flex items-center gap-1.5"><IconFlame size={15} />Cardio</span>
+                    : <span className="flex items-center gap-1.5"><IconDumbbell size={15} />Weights</span>
+                  }
                 </button>
               ))}
             </div>
@@ -834,7 +855,9 @@ export default function Home() {
 
           {/* ── WEIGHT ────────────────────────────────────────────────────── */}
           <TabsContent value="weight" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
-            <h2 className="font-headline text-title-md" style={{ color: C.onSurface }}>⚖️ Body Metrics</h2>
+            <h2 className="font-headline text-title-md flex items-center gap-2" style={{ color: C.onSurface }}>
+              <IconScale size={20} style={{ color: C.hydration }} /> Body Metrics
+            </h2>
             {userProfile ? (
               <>
                 <WeightGraph uid={currentUser.uid} days={30} targetWeight={userProfile.targetWeight} />
@@ -884,10 +907,14 @@ export default function Home() {
             {/* Streak hero card */}
             <div className="glass-card rounded-xl p-5 relative overflow-hidden"
               style={{ borderLeft: `4px solid ${C.nutrition}` }}>
-              <div className="absolute top-3 right-3 text-6xl opacity-10">🔥</div>
+              <div className="absolute top-3 right-3 opacity-10" style={{ color: C.nutrition }}>
+                <IconFlame size={56} />
+              </div>
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full flex items-center justify-center text-3xl"
-                  style={{ background: `${C.nutrition}20` }}>🔥</div>
+                <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                  style={{ background: `${C.nutrition}20`, color: C.nutrition }}>
+                  <IconFlame size={28} />
+                </div>
                 <div>
                   <h2 className="font-display text-2xl" style={{ color: C.onSurface }}>
                     {streakLogs.filter(l => l.isStreakDay).length} Day Streak
@@ -913,7 +940,9 @@ export default function Home() {
           {/* ── SUMMARY ───────────────────────────────────────────────────── */}
           <TabsContent value="summary" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
             <div className="flex items-center justify-between">
-              <h2 className="font-headline text-title-md" style={{ color: C.onSurface }}>📊 Summary</h2>
+              <h2 className="font-headline text-title-md flex items-center gap-2" style={{ color: C.onSurface }}>
+                <IconBarChart size={20} style={{ color: C.hydration }} /> Summary
+              </h2>
               <div className="flex gap-1">
                 {(["day", "week", "month", "year"] as const).map(p => (
                   <button key={p} onClick={() => setSummaryPeriod(p)}
@@ -930,18 +959,20 @@ export default function Home() {
 
             {isSummaryLoading ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin" style={{ color: C.hydration }} />
+                <IconSpinner size={24} className="animate-spin" style={{ color: C.hydration }} />
               </div>
             ) : (
               <div className="glass-card rounded-xl p-5 space-y-5">
                 {[
-                  { label: "Hydration", emoji: "💧", pct: getSd().water.percentage, consumed: `${getSd().water.consumed.toFixed(1)}L`, goal: `${(getSd().water.goal * getSd().totalDays).toFixed(1)}L`, color: C.hydration },
-                  { label: "Calories",  emoji: "🥗", pct: getSd().calories.percentage, consumed: `${Math.round(getSd().calories.consumed)} kcal`, goal: `${Math.round(getSd().calories.goal * getSd().totalDays)} kcal`, color: C.nutrition },
-                  { label: "Exercise",  emoji: "🔥", pct: getSd().exercise.percentage, consumed: `${getSd().exercise.calories} cal`, goal: `${Math.round(getSd().exercise.goal * getSd().totalDays)} cal`, color: C.exercise },
-                ].map(({ label, emoji, pct, consumed, goal, color }) => (
+                  { label: "Hydration", Icon: IconDroplet,  pct: getSd().water.percentage, consumed: `${getSd().water.consumed.toFixed(1)}L`, goal: `${(getSd().water.goal * getSd().totalDays).toFixed(1)}L`, color: C.hydration },
+                  { label: "Calories",  Icon: IconUtensils, pct: getSd().calories.percentage, consumed: `${Math.round(getSd().calories.consumed)} kcal`, goal: `${Math.round(getSd().calories.goal * getSd().totalDays)} kcal`, color: C.nutrition },
+                  { label: "Exercise",  Icon: IconFlame,    pct: getSd().exercise.percentage, consumed: `${getSd().exercise.calories} cal`, goal: `${Math.round(getSd().exercise.goal * getSd().totalDays)} cal`, color: C.exercise },
+                ].map(({ label, Icon, pct, consumed, goal, color }) => (
                   <div key={label} className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="font-body text-sm" style={{ color: C.onSurface }}>{emoji} {label}</span>
+                      <span className="font-body text-sm flex items-center gap-1.5" style={{ color: C.onSurface }}>
+                        <Icon size={14} style={{ color }} />{label}
+                      </span>
                       <span className="font-label text-xs" style={{ color: C.variant }}>{consumed} / {goal}</span>
                     </div>
                     <Gauge value={pct} max={100} color={color} />
@@ -962,9 +993,9 @@ export default function Home() {
               <div className="flex gap-2">
                 {(["csv", "json"] as const).map(fmt => (
                   <button key={fmt} onClick={() => exportData(fmt)}
-                    className="flex-1 h-11 rounded-xl font-headline text-sm glass-card active:scale-95 transition-all"
+                    className="flex-1 h-11 rounded-xl font-headline text-sm glass-card active:scale-95 transition-all flex items-center justify-center gap-2"
                     style={{ color: C.variant, border: `1px solid ${C.outline}` }}>
-                    {fmt === "csv" ? "📄 CSV" : "📦 JSON"}
+                    {fmt === "csv" ? <><IconFile size={15} /> CSV</> : <><IconBraces size={15} /> JSON</>}
                   </button>
                 ))}
               </div>
@@ -973,17 +1004,19 @@ export default function Home() {
             {/* AI Coach */}
             <div className="glass-card rounded-xl p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-headline text-sm" style={{ color: C.onSurface }}>🧠 AI Coach</h3>
+                <h3 className="font-headline text-sm flex items-center gap-2" style={{ color: C.onSurface }}>
+                  <IconBrain size={16} style={{ color: C.hydration }} /> AI Coach
+                </h3>
                 <button onClick={fetchAIAnalysis} disabled={isAnalyzingAI}
-                  className="px-4 h-9 rounded-xl font-headline text-xs active:scale-95 transition-all disabled:opacity-40"
+                  className="px-4 h-9 rounded-xl font-headline text-xs active:scale-95 transition-all disabled:opacity-40 flex items-center gap-1.5"
                   style={{ background: `${C.hydration}20`, color: C.hydration, border: `1px solid ${C.hydration}50` }}>
-                  {isAnalyzingAI ? <Loader2 className="h-3.5 w-3.5 animate-spin inline" /> : "✨ Analyze"}
+                  {isAnalyzingAI ? <IconSpinner size={13} className="animate-spin" /> : <><IconSparkle size={13} /> Analyze</>}
                 </button>
               </div>
 
               {isAnalyzingAI ? (
                 <div className="flex flex-col items-center py-8 gap-3">
-                  <Loader2 className="h-6 w-6 animate-spin" style={{ color: C.hydration }} />
+                  <IconSpinner size={24} className="animate-spin" style={{ color: C.hydration }} />
                   <p className="font-label text-xs" style={{ color: C.variant }}>Crunching your data…</p>
                 </div>
               ) : aiAnalysis ? (
@@ -1008,7 +1041,9 @@ export default function Home() {
 
                   {aiAnalysis.highlights?.length > 0 && (
                     <div className="space-y-2">
-                      <div className="font-label text-xs uppercase tracking-widest" style={{ color: C.nutrition }}>✓ Highlights</div>
+                      <div className="font-label text-xs uppercase tracking-widest flex items-center gap-1.5" style={{ color: C.nutrition }}>
+                        <IconCheck size={11} /> Highlights
+                      </div>
                       {aiAnalysis.highlights.map((h, i) => (
                         <div key={i} className="font-body text-sm flex items-start gap-2" style={{ color: C.onSurface }}>
                           <span style={{ color: C.nutrition }}>·</span>{h}
@@ -1019,7 +1054,9 @@ export default function Home() {
 
                   {aiAnalysis.areasToImprove?.length > 0 && (
                     <div className="space-y-2">
-                      <div className="font-label text-xs uppercase tracking-widest" style={{ color: C.exercise }}>↑ Improve</div>
+                      <div className="font-label text-xs uppercase tracking-widest flex items-center gap-1.5" style={{ color: C.exercise }}>
+                        <IconTrendingUp size={11} /> Improve
+                      </div>
                       {aiAnalysis.areasToImprove.map((a, i) => (
                         <div key={i} className="font-body text-sm flex items-start gap-2" style={{ color: C.onSurface }}>
                           <span style={{ color: C.exercise }}>·</span>{a}
@@ -1041,8 +1078,8 @@ export default function Home() {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-10">
-                  <div className="text-5xl mb-3 opacity-30">🧠</div>
+                <div className="text-center py-10 flex flex-col items-center gap-3">
+                  <div className="opacity-20" style={{ color: C.hydration }}><IconBrain size={48} /></div>
                   <p className="font-body text-sm" style={{ color: C.variant }}>Tap Analyze for AI-powered insights</p>
                 </div>
               )}
@@ -1059,17 +1096,20 @@ export default function Home() {
       <nav className="fixed bottom-4 left-4 right-4 z-40 rounded-2xl pb-safe"
         style={{ background: C.navBg, backdropFilter: "blur(20px)", border: `1px solid ${C.outline}`, boxShadow: isDark ? "0 8px 32px #00000080" : "0 4px 24px rgba(0,0,0,0.12)" }}>
         <div className="flex items-stretch justify-around px-2 pt-2 pb-1">
-          {NAV.map(({ id, emoji, label }) => {
+          {NAV.map(({ id, Icon, label }) => {
             const isActive = activeTab === id;
             const accentColor = id === "hydration" ? C.hydration : id === "diet" ? C.nutrition : id === "exercise" ? C.exercise : id === "weight" ? C.hydration : id === "streak" ? C.nutrition : C.hydration;
             return (
               <button key={id} onClick={() => setActiveTab(id)}
                 className="flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-xl transition-all active:scale-90 relative min-w-[48px]">
-                {/* Top indicator bar */}
                 {isActive && (
                   <div className="absolute top-0 left-2 right-2 h-0.5 rounded-full" style={{ background: accentColor }} />
                 )}
-                <span className={`text-xl transition-all ${isActive ? "scale-110" : "opacity-50"}`}>{emoji}</span>
+                <Icon
+                  size={20}
+                  style={{ color: isActive ? accentColor : C.variant }}
+                  className={`transition-all ${isActive ? "scale-110" : ""}`}
+                />
                 <span className="font-label text-[9px] uppercase tracking-wide transition-all"
                   style={{ color: isActive ? accentColor : C.variant }}>{label}</span>
               </button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { IconChevronLeft, IconChevronRight } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { IFitnessLog } from "@/models/FitnessLog";
 
@@ -121,7 +121,7 @@ export default function SidebarCalendar({ logs, selectedDate, onSelectDate }: Si
             className="h-7 w-7"
             onClick={previousMonth}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <IconChevronLeft size={16} />
           </Button>
           <Button
             variant="ghost"
@@ -129,7 +129,7 @@ export default function SidebarCalendar({ logs, selectedDate, onSelectDate }: Si
             className="h-7 w-7"
             onClick={nextMonth}
           >
-            <ChevronRight className="h-4 w-4" />
+            <IconChevronRight size={16} />
           </Button>
         </div>
       </div>

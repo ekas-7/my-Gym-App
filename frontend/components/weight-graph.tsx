@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { IconTrendingUp, IconTrendingDown, IconMinus } from '@/components/icons';
 import { getWeightLogs } from '@/lib/firestore';
 
 interface WeightLogEntry {
@@ -132,11 +132,11 @@ export function WeightGraph({ uid, days = 30, targetWeight }: WeightGraphProps) 
             <CardTitle className="flex items-center gap-2">
               Weight Progress
               {weightChange > 0 ? (
-                <TrendingUp className="h-5 w-5 text-red-500" />
+                <IconTrendingUp size={20} className="text-red-500" />
               ) : weightChange < 0 ? (
-                <TrendingDown className="h-5 w-5 text-green-500" />
+                <IconTrendingDown size={20} className="text-green-500" />
               ) : (
-                <Minus className="h-5 w-5 text-gray-500" />
+                <IconMinus size={20} className="text-gray-500" />
               )}
             </CardTitle>
             <CardDescription>Last {days} days</CardDescription>

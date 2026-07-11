@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check } from "lucide-react";
+import { IconCheck } from "@/components/icons";
 
 interface ExerciseItemProps {
   name: string;
@@ -27,7 +27,7 @@ export function ExerciseItem({ name, reps, sets, isCompleted, onToggle }: Exerci
       </div>
       {isCompleted && (
         <Badge variant="secondary" className="ml-2">
-          <Check className="h-3 w-3" />
+          <IconCheck size={12} />
         </Badge>
       )}
     </Button>

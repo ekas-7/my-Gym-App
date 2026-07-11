@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Minus, Check, X, Trash2 } from 'lucide-react';
+import { IconPlus, IconMinus, IconCheck, IconX, IconTrash } from '@/components/icons';
 import { IExercise, ISet } from '@/models/Exercise';
 
 interface ExerciseFormProps {
@@ -81,7 +81,7 @@ export function ExerciseForm({ onSave, onCancel, initialData, muscleGroups }: Ex
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium">Sets</label>
           <Button size="sm" variant="outline" onClick={addSet}>
-            <Plus className="h-4 w-4 mr-1" />
+            <IconPlus size={16} className="mr-1" />
             Add Set
           </Button>
         </div>
@@ -120,7 +120,7 @@ export function ExerciseForm({ onSave, onCancel, initialData, muscleGroups }: Ex
                   onClick={() => removeSet(index)}
                   className="text-red-600 hover:text-red-700"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <IconTrash size={16} />
                 </Button>
               )}
             </div>
@@ -145,11 +145,11 @@ export function ExerciseForm({ onSave, onCancel, initialData, muscleGroups }: Ex
 
       <div className="flex gap-2">
         <Button onClick={handleSubmit} className="flex-1" disabled={!name.trim()}>
-          <Check className="h-4 w-4 mr-2" />
+          <IconCheck size={16} className="mr-2" />
           Save Exercise
         </Button>
         <Button onClick={onCancel} variant="outline" className="flex-1">
-          <X className="h-4 w-4 mr-2" />
+          <IconX size={16} className="mr-2" />
           Cancel
         </Button>
       </div>
@@ -197,7 +197,7 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
                 onClick={() => exercise.id && onDelete(exercise.id)}
                 className="text-red-600 hover:text-red-700"
               >
-                <Trash2 className="h-4 w-4" />
+                <IconTrash size={16} />
               </Button>
             </div>
 

@@ -4,7 +4,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trash2, Sparkles } from 'lucide-react';
+import { IconTrash, IconSparkle } from '@/components/icons';
 import { IMeal } from '@/models/Meal';
 
 interface MealHistoryProps {
@@ -65,7 +65,7 @@ export function MealHistory({ meals, onDelete }: MealHistoryProps) {
                     </Badge>
                     {meal.isAIAnalyzed && (
                       <Badge variant="outline" className="text-xs">
-                        <Sparkles className="h-3 w-3 mr-1" />
+                        <IconSparkle size={12} className="mr-1" />
                         AI
                       </Badge>
                     )}
@@ -112,7 +112,7 @@ export function MealHistory({ meals, onDelete }: MealHistoryProps) {
                   onClick={() => meal.id && onDelete(meal.id)}
                   className="text-red-600 hover:text-red-700 ml-2"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <IconTrash size={16} />
                 </Button>
               </div>
             </Card>
