@@ -24,7 +24,7 @@ import { InstallPWABanner } from "@/components/install-pwa-banner";
 import {
   IconDroplet, IconUtensils, IconDumbbell, IconScale, IconFlame, IconBarChart,
   IconSun, IconMoon, IconSparkle, IconBrain, IconSpinner, IconCheck, IconTrendingUp,
-  IconGlass, IconBottle, IconFile, IconBraces, IconApple, IconShield, IconToday,
+  IconFile, IconBraces, IconApple, IconShield, IconToday,
 } from "@/components/icons";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
@@ -655,27 +655,27 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Quick add + remove */}
+              {/* Quick add + remove — 4 equal buttons */}
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { label: "250ml", amount: 0.25, Icon: IconGlass },
-                  { label: "500ml", amount: 0.5,  Icon: IconBottle },
-                  { label: "1 L",   amount: 1,     Icon: IconDroplet },
-                ].map(({ label, amount, Icon }) => (
+                  { label: "Glass",  sub: "250ml", amount: 0.25 },
+                  { label: "Bottle", sub: "500ml", amount: 0.5  },
+                  { label: "Jug",    sub: "1 L",   amount: 1    },
+                ].map(({ label, sub, amount }) => (
                   <button key={label}
                     onClick={() => { const n = Math.min(waterIntake + amount, dailyWaterGoal * 2); setWaterIntake(n); updateLog({ waterLiters: n }, n); }}
-                    className="glass-card rounded-xl py-2.5 flex flex-col items-center gap-0.5 active:scale-95 transition-all"
-                    style={{ border: `1px solid ${C.hydration}30` }}>
-                    <Icon size={18} style={{ color: C.hydration }} />
-                    <span className="font-label text-[9px]" style={{ color: C.variant }}>{label}</span>
+                    className="rounded-xl py-3 flex flex-col items-center gap-0.5 active:scale-95 transition-all"
+                    style={{ background: `${C.hydration}15`, border: `1px solid ${C.hydration}35` }}>
+                    <span className="font-headline text-sm" style={{ color: C.hydration }}>+{amount >= 1 ? amount : amount * 1000 >= 500 ? "½" : "¼"}</span>
+                    <span className="font-label text-[9px]" style={{ color: C.variant }}>{sub}</span>
                   </button>
                 ))}
                 <button
                   onClick={() => { const n = Math.max(waterIntake - 0.25, 0); setWaterIntake(n); updateLog({ waterLiters: n }, n); }}
-                  className="glass-card rounded-xl py-2.5 flex flex-col items-center gap-0.5 active:scale-95 transition-all"
-                  style={{ border: `1px solid ${C.outline}` }}>
-                  <span className="font-headline text-base" style={{ color: C.variant }}>−</span>
-                  <span className="font-label text-[9px]" style={{ color: C.variant }}>Remove</span>
+                  className="rounded-xl py-3 flex flex-col items-center gap-0.5 active:scale-95 transition-all"
+                  style={{ background: `${C.outline}30`, border: `1px solid ${C.outline}` }}>
+                  <span className="font-headline text-sm" style={{ color: C.variant }}>−¼</span>
+                  <span className="font-label text-[9px]" style={{ color: C.variant }}>250ml</span>
                 </button>
               </div>
 

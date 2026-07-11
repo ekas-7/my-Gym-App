@@ -11,29 +11,28 @@ export function ServiceWorkerRegister() {
       try {
         const registration = await navigator.serviceWorker.register("/sw.js", {
           scope: "/",
-          updateViaCache: "none",
+          updateViaCache: "none", // always fetch sw.js fresh from network
         });
 
-        // Check for updates every 60 seconds when the app is open
-        setInterval(() => registration.update(), 60_000);
-
-        registration.addEventListener("updatefound", () => {
-          const newWorker = registration.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener("statechange", () => {
-            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-              // New version available — reload to pick up fresh assets
-              window.location.reload();
-            }
-          });
+        // When the new SW takes control, reload for fresh assets.
+        // controllerchange is the most reliable signal on iOS Safari PWA.
+        let reloading = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (reloading) return;
+          reloading = true;
+          window.location.reload();
         });
+
+        // Also poll for updates every 30 s while the app is open
+        setInterval(() => registration.update(), 30_000);
+
+        // Trigger an immediate update check on registration
+        registration.update();
       } catch (err) {
-        // SW registration failures are non-fatal — app still works
         console.warn("SW registration failed:", err);
       }
     };
 
-    // Register after page load to not block interactivity
     if (document.readyState === "complete") {
       registerSW();
     } else {
