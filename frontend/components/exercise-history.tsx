@@ -1,26 +1,14 @@
 'use client';
 
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { IconSparkle, IconDumbbell, IconHeart, IconTimer, IconZap, IconRun, IconShield, IconTarget, IconFlame } from '@/components/icons';
 import { SwipeToDelete } from '@/components/swipe-to-delete';
-import { IExercise } from '@/models/Exercise';
+import { IExercise } from '@/lib/types';
 
 interface ExerciseHistoryProps {
   exercises: IExercise[];
   onDelete: (id: string) => void;
 }
-
-const categoryColors: Record<string, string> = {
-  cardio:            'bg-red-100  text-red-800  border-red-200  dark:bg-red-950/40  dark:text-red-300  dark:border-red-800',
-  'weight-training': 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
-};
-
-const categoryIcons: Record<string, React.ReactNode> = {
-  cardio:            <IconRun      size={12} />,
-  'weight-training': <IconDumbbell size={12} />,
-};
 
 const MuscleIcon: Record<string, React.ReactNode> = {
   chest:       <IconHeart    size={11} />,
@@ -35,159 +23,109 @@ const MuscleIcon: Record<string, React.ReactNode> = {
   'full-body': <IconFlame    size={11} />,
 };
 
+/* Small labelled metric tile */
+function Metric({ label, value, unit, color }: { label: string; value: React.ReactNode; unit?: string; color: string }) {
+  return (
+    <div className="rounded-lg p-2.5" style={{ background: 'var(--input)', border: '1px solid var(--border)' }}>
+      <div className="font-label text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted-foreground)' }}>{label}</div>
+      <div className="font-display text-base mt-0.5" style={{ color }}>{value}{unit ? <span className="text-[11px] font-headline"> {unit}</span> : null}</div>
+    </div>
+  );
+}
+
 export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
   if (exercises.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground text-sm">
-        No exercises logged yet. Add your first exercise using the AI analyzer above!
+      <div className="text-center py-6 font-body text-sm" style={{ color: 'var(--muted-foreground)' }}>
+        No exercises logged yet.
       </div>
     );
   }
 
+  const totalBurned = exercises.reduce((sum, ex) => sum + (ex.caloriesBurned || 0), 0);
+
   return (
     <div className="space-y-3">
-      <div>
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <span>Today's Exercises</span>
-          <Badge variant="outline">{exercises.length} total</Badge>
-        </h3>
-
-        <div className="space-y-3">
-          {exercises.map((exercise) => (
+      <div className="space-y-2.5">
+        {exercises.map((exercise) => {
+          const isWeights = exercise.category === 'weight-training';
+          const catColor = isWeights ? 'var(--chart-3)' : 'var(--chart-1)';
+          return (
             <SwipeToDelete
               key={exercise.id}
               onDelete={() => exercise.id && onDelete(exercise.id)}
               deleteLabel={`Delete ${exercise.name}`}
             >
-              <Card className="p-4">
+              <div className="rounded-xl p-3.5" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <Badge className={categoryColors[exercise.category]}>
-                    {categoryIcons[exercise.category]}
-                    <span className="ml-1 capitalize">{exercise.category === 'weight-training' ? 'Weights' : 'Cardio'}</span>
-                  </Badge>
-                  
+                  {/* category chip */}
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-label text-[10px] uppercase tracking-wider"
+                    style={{ background: `color-mix(in srgb, ${catColor} 12%, transparent)`, color: catColor }}>
+                    {isWeights ? <IconDumbbell size={11} /> : <IconRun size={11} />}
+                    {isWeights ? 'Weights' : 'Cardio'}
+                  </span>
+
                   {exercise.muscleGroup && (
-                    <Badge variant="outline" className="text-xs">
-                      {MuscleIcon[exercise.muscleGroup]} <span className="capitalize">{exercise.muscleGroup}</span>
-                    </Badge>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-label text-[10px] uppercase tracking-wider"
+                      style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
+                      {MuscleIcon[exercise.muscleGroup]}<span className="capitalize">{exercise.muscleGroup}</span>
+                    </span>
                   )}
-                  
+
                   {exercise.isAIAnalyzed && (
-                    <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
-                      <IconSparkle size={12} className="mr-1" />
-                      AI
-                    </Badge>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-label text-[10px] uppercase tracking-wider"
+                      style={{ background: 'color-mix(in srgb, var(--chart-1) 12%, transparent)', color: 'var(--chart-1)' }}>
+                      <IconSparkle size={11} />AI
+                    </span>
                   )}
-                  
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    {new Date(exercise.createdAt || exercise.date).toLocaleTimeString('en-US', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
+
+                  <span className="font-label text-[10px] ml-auto" style={{ color: 'var(--muted-foreground)' }}>
+                    {new Date(exercise.createdAt || exercise.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                
-                <p className="text-base font-semibold mb-3">{exercise.name}</p>
 
-                <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                  {exercise.category === 'weight-training' && exercise.sets.length > 0 && (
+                <p className="font-headline text-sm mb-2.5" style={{ color: 'var(--foreground)' }}>{exercise.name}</p>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {isWeights && exercise.sets.length > 0 && (
                     <>
-                      <div className="bg-blue-50 dark:bg-blue-950/30 p-2.5 rounded-md border border-blue-100 dark:border-blue-900">
-                        <div className="text-muted-foreground mb-0.5">Sets</div>
-                        <div className="font-bold text-blue-700 dark:text-blue-400 text-base">{exercise.sets.length}</div>
-                      </div>
-                      <div className="bg-purple-50 dark:bg-purple-950/30 p-2.5 rounded-md border border-purple-100 dark:border-purple-900">
-                        <div className="text-muted-foreground mb-0.5">Reps</div>
-                        <div className="font-bold text-purple-700 dark:text-purple-400 text-base">
-                          {exercise.sets[0].reps}
-                        </div>
-                      </div>
-                      {exercise.sets[0].weight > 0 && (
-                        <div className="bg-green-50 dark:bg-green-950/30 p-2.5 rounded-md border border-green-100 dark:border-green-900">
-                          <div className="text-muted-foreground mb-0.5">Weight</div>
-                          <div className="font-bold text-green-700 dark:text-green-400 text-base">{exercise.sets[0].weight} kg</div>
-                        </div>
-                      )}
+                      <Metric label="Sets" value={exercise.sets.length} color="var(--chart-1)" />
+                      <Metric label="Reps" value={exercise.sets[0].reps} color="var(--chart-2)" />
+                      {exercise.sets[0].weight > 0 && <Metric label="Weight" value={exercise.sets[0].weight} unit="kg" color="var(--chart-3)" />}
                     </>
                   )}
-
                   {exercise.category === 'cardio' && (
                     <>
-                      {exercise.duration && (
-                        <div className="bg-red-50 dark:bg-red-950/30 p-2.5 rounded-md border border-red-100 dark:border-red-900">
-                          <div className="text-muted-foreground flex items-center gap-1 mb-0.5">
-                            <IconTimer size={12} />
-                            Duration
-                          </div>
-                          <div className="font-bold text-red-700 dark:text-red-400 text-base">{exercise.duration} min</div>
-                        </div>
-                      )}
-                      {exercise.distance && (
-                        <div className="bg-orange-50 dark:bg-orange-950/30 p-2.5 rounded-md border border-orange-100 dark:border-orange-900">
-                          <div className="text-muted-foreground mb-0.5">Distance</div>
-                          <div className="font-bold text-orange-700 dark:text-orange-400 text-base">{exercise.distance} km</div>
-                        </div>
-                      )}
+                      {exercise.duration ? <Metric label="Duration" value={exercise.duration} unit="min" color="var(--chart-1)" /> : null}
+                      {exercise.distance ? <Metric label="Distance" value={exercise.distance} unit="km" color="var(--chart-3)" /> : null}
                     </>
                   )}
-
-                  {exercise.caloriesBurned && (
-                    <div className="bg-yellow-50 dark:bg-yellow-950/30 p-2.5 rounded-md border border-yellow-100 dark:border-yellow-900">
-                      <div className="text-muted-foreground flex items-center gap-1 mb-0.5">
-                        <IconZap size={12} />
-                        Burned
-                      </div>
-                      <div className="font-bold text-yellow-700 dark:text-yellow-400 text-base">{exercise.caloriesBurned} kcal</div>
-                    </div>
-                  )}
+                  {exercise.caloriesBurned ? <Metric label="Burned" value={exercise.caloriesBurned} unit="kcal" color="var(--chart-2)" /> : null}
                 </div>
 
                 {exercise.notes && (
-                  <div className="text-xs text-muted-foreground bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-md border border-gray-200 dark:border-gray-800">
+                  <div className="mt-2.5 font-body text-xs rounded-lg p-2.5" style={{ background: 'var(--input)', border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
                     {exercise.notes}
                   </div>
                 )}
-              </Card>
+              </div>
             </SwipeToDelete>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Summary Stats */}
-      <Card className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200 dark:border-blue-900">
-        <div className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <IconDumbbell size={16} />
-          Today's Summary
+      {/* Summary */}
+      <div className="rounded-xl p-3.5 flex items-center justify-around" style={{ background: 'var(--input)', border: '1px solid var(--border)' }}>
+        <div className="text-center">
+          <div className="font-label text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted-foreground)' }}>Exercises</div>
+          <div className="font-display text-xl" style={{ color: 'var(--chart-1)' }}>{exercises.length}</div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="space-y-1">
-            <div className="text-xs text-muted-foreground">Total Exercises</div>
-            <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">{exercises.length}</div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-xs text-muted-foreground">Total Calories Burned</div>
-            <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">
-              {exercises.reduce((sum, ex) => sum + (ex.caloriesBurned || 0), 0)} <span className="text-sm">kcal</span>
-            </div>
-          </div>
-          {exercises.some(ex => ex.duration) && (
-            <div className="space-y-1">
-              <div className="text-xs text-muted-foreground">Total Duration</div>
-              <div className="text-2xl font-bold text-green-700 dark:text-green-400">
-                {exercises.reduce((sum, ex) => sum + (ex.duration || 0), 0)} <span className="text-sm">min</span>
-              </div>
-            </div>
-          )}
-          {exercises.filter(ex => ex.category === 'weight-training').length > 0 && (
-            <div className="space-y-1">
-              <div className="text-xs text-muted-foreground">Weight Training</div>
-              <div className="text-2xl font-bold text-orange-700 dark:text-orange-400">
-                {exercises.filter(ex => ex.category === 'weight-training').length} <span className="text-sm">exercises</span>
-              </div>
-            </div>
-          )}
+        <div className="w-px h-8" style={{ background: 'var(--border)' }} />
+        <div className="text-center">
+          <div className="font-label text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted-foreground)' }}>Burned</div>
+          <div className="font-display text-xl" style={{ color: 'var(--chart-2)' }}>{totalBurned}<span className="text-[11px] font-headline"> kcal</span></div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

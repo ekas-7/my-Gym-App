@@ -1,25 +1,14 @@
 'use client';
 
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { IconSparkle, IconSunrise, IconSun, IconMoon, IconCoffee, IconUtensils } from '@/components/icons';
 import { SwipeToDelete } from '@/components/swipe-to-delete';
-import { IMeal } from '@/models/Meal';
+import { IMeal } from '@/lib/types';
 
 interface MealHistoryProps {
   meals: IMeal[];
   onDelete: (id: string) => void;
 }
-
-const mealTypeColors: Record<string, string> = {
-  breakfast: 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800',
-  lunch:     'bg-green-100  text-green-800  border-green-200  dark:bg-green-950/40  dark:text-green-300  dark:border-green-800',
-  dinner:    'bg-blue-100   text-blue-800   border-blue-200   dark:bg-blue-950/40   dark:text-blue-300   dark:border-blue-800',
-  snack:     'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800',
-  other:     'bg-gray-100   text-gray-800   border-gray-200   dark:bg-gray-800/60   dark:text-gray-300   dark:border-gray-600',
-};
 
 const MealTypeIcon: Record<string, React.ReactNode> = {
   breakfast: <IconSunrise size={12} />,
@@ -29,127 +18,77 @@ const MealTypeIcon: Record<string, React.ReactNode> = {
   other:     <IconUtensils size={12} />,
 };
 
+const mealTypeColor: Record<string, string> = {
+  breakfast: 'var(--chart-3)',
+  lunch:     'var(--chart-2)',
+  dinner:    'var(--chart-1)',
+  snack:     'var(--chart-4)',
+  other:     'var(--muted-foreground)',
+};
+
+function Macro({ label, value, color }: { label: string; value: React.ReactNode; color: string }) {
+  return (
+    <div className="rounded-lg p-2" style={{ background: 'var(--input)', border: '1px solid var(--border)' }}>
+      <div className="font-label text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted-foreground)' }}>{label}</div>
+      <div className="font-display text-sm mt-0.5" style={{ color }}>{value}</div>
+    </div>
+  );
+}
+
 export function MealHistory({ meals, onDelete }: MealHistoryProps) {
   if (meals.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground text-sm">
-        No meals logged yet. Add your first meal using the AI analyzer above!
+      <div className="text-center py-6 font-body text-sm" style={{ color: 'var(--muted-foreground)' }}>
+        No meals logged yet.
       </div>
     );
   }
 
-  // Group meals by type
-  const mealsByType = meals.reduce((acc, meal) => {
-    const type = meal.mealType || 'other';
-    if (!acc[type]) acc[type] = [];
-    acc[type].push(meal);
-    return acc;
-  }, {} as Record<string, IMeal[]>);
-
   return (
-    <div className="space-y-4">
-      {/* All Meals */}
-      <div>
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <span>Today's Meals</span>
-          <Badge variant="outline">{meals.length} total</Badge>
-        </h3>
-
-        <div className="space-y-2">
-          {meals.map((meal) => (
-            <SwipeToDelete
-              key={meal.id}
-              onDelete={() => meal.id && onDelete(meal.id)}
-              deleteLabel={`Delete ${meal.mealType} meal`}
-            >
-              <Card className="p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge className={`flex items-center gap-1 ${mealTypeColors[meal.mealType]}`}>
-                    {MealTypeIcon[meal.mealType]}
-                    <span className="capitalize">{meal.mealType}</span>
-                  </Badge>
-                  {meal.isAIAnalyzed && (
-                    <Badge variant="outline" className="text-xs">
-                      <IconSparkle size={12} className="mr-1" />
-                      AI
-                    </Badge>
-                  )}
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    {new Date(meal.timestamp).toLocaleTimeString('en-US', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
+    <div className="space-y-2.5">
+      {meals.map((meal) => {
+        const color = mealTypeColor[meal.mealType] || 'var(--muted-foreground)';
+        return (
+          <SwipeToDelete
+            key={meal.id}
+            onDelete={() => meal.id && onDelete(meal.id)}
+            deleteLabel={`Delete ${meal.mealType} meal`}
+          >
+            <div className="rounded-xl p-3.5" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-label text-[10px] uppercase tracking-wider capitalize"
+                  style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}>
+                  {MealTypeIcon[meal.mealType]}{meal.mealType}
+                </span>
+                {meal.isAIAnalyzed && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-label text-[10px] uppercase tracking-wider"
+                    style={{ background: 'color-mix(in srgb, var(--chart-1) 12%, transparent)', color: 'var(--chart-1)' }}>
+                    <IconSparkle size={11} />AI
                   </span>
-                </div>
-                
-                <p className="text-sm font-medium mb-2">{meal.description}</p>
-
-                {/* Macros Grid */}
-                <div className="grid grid-cols-4 gap-2 text-xs">
-                  <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded">
-                    <div className="text-muted-foreground">Cal</div>
-                    <div className="font-bold text-red-700 dark:text-red-400">{meal.calories}</div>
-                  </div>
-                  <div className="bg-blue-50 dark:bg-blue-950/30 p-2 rounded">
-                    <div className="text-muted-foreground">Carbs</div>
-                    <div className="font-bold text-blue-700 dark:text-blue-400">{meal.carbs.toFixed(0)}g</div>
-                  </div>
-                  <div className="bg-yellow-50 dark:bg-yellow-950/30 p-2 rounded">
-                    <div className="text-muted-foreground">Fat</div>
-                    <div className="font-bold text-yellow-700 dark:text-yellow-400">{meal.fats.toFixed(0)}g</div>
-                  </div>
-                  <div className="bg-purple-50 dark:bg-purple-950/30 p-2 rounded">
-                    <div className="text-muted-foreground">Prot</div>
-                    <div className="font-bold text-purple-700 dark:text-purple-400">{meal.protein.toFixed(0)}g</div>
-                  </div>
-                </div>
-
-                {meal.notes && (
-                  <div className="mt-2 text-xs text-muted-foreground italic">
-                    {meal.notes}
-                  </div>
                 )}
-              </Card>
-            </SwipeToDelete>
-          ))}
-        </div>
-      </div>
+                <span className="font-label text-[10px] ml-auto" style={{ color: 'var(--muted-foreground)' }}>
+                  {new Date(meal.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
 
-      {/* Breakdown by Meal Type */}
-      {Object.keys(mealsByType).length > 1 && (
-        <div className="border-t pt-4">
-          <h3 className="text-sm font-semibold mb-3">Breakdown by Meal Type</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {Object.entries(mealsByType).map(([type, typeMeals]) => {
-              const totalCalories = typeMeals.reduce((sum: number, meal: any) => sum + meal.calories, 0);
-              const totalProtein = typeMeals.reduce((sum: number, meal: any) => sum + meal.protein, 0);
+              <p className="font-headline text-sm mb-2.5" style={{ color: 'var(--foreground)' }}>{meal.description}</p>
 
-              return (
-                <Card key={type} className="p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-muted-foreground">{MealTypeIcon[type]}</span>
-                    <div className="text-sm font-medium capitalize">{type}</div>
-                  </div>
-                  <div className="text-xs space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Meals:</span>
-                      <span className="font-semibold">{typeMeals.length}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Calories:</span>
-                      <span className="font-semibold">{totalCalories}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Protein:</span>
-                      <span className="font-semibold">{totalProtein.toFixed(1)}g</span>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
+              <div className="grid grid-cols-4 gap-2">
+                <Macro label="Cal"   value={meal.calories}             color="var(--chart-2)" />
+                <Macro label="Carbs" value={`${meal.carbs.toFixed(0)}g`}   color="var(--chart-1)" />
+                <Macro label="Fat"   value={`${meal.fats.toFixed(0)}g`}    color="var(--chart-3)" />
+                <Macro label="Prot"  value={`${meal.protein.toFixed(0)}g`} color="var(--chart-4)" />
+              </div>
+
+              {meal.notes && (
+                <div className="mt-2.5 font-body text-xs rounded-lg p-2.5" style={{ background: 'var(--input)', border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
+                  {meal.notes}
+                </div>
+              )}
+            </div>
+          </SwipeToDelete>
+        );
+      })}
     </div>
   );
 }
@@ -164,18 +103,25 @@ export function MealTypeSelect({ value, onChange }: MealTypeSelectProps) {
 
   return (
     <div className="flex flex-wrap gap-2">
-      {mealTypes.map((type) => (
-        <Button
-          key={type}
-          size="sm"
-          variant={value === type ? 'default' : 'outline'}
-          onClick={() => onChange(type)}
-          className="capitalize flex items-center gap-1.5"
-        >
-          {MealTypeIcon[type]}
-          {type}
-        </Button>
-      ))}
+      {mealTypes.map((type) => {
+        const active = value === type;
+        const color = mealTypeColor[type] || 'var(--muted-foreground)';
+        return (
+          <button
+            key={type}
+            onClick={() => onChange(type)}
+            className="capitalize inline-flex items-center gap-1.5 px-3 h-9 rounded-xl font-headline text-xs active:scale-95 transition-all"
+            style={{
+              background: active ? color : 'var(--input)',
+              border: `1px solid ${active ? color : 'var(--border)'}`,
+              color: active ? '#0a0a0a' : 'var(--muted-foreground)',
+            }}
+          >
+            {MealTypeIcon[type]}
+            {type}
+          </button>
+        );
+      })}
     </div>
   );
 }
