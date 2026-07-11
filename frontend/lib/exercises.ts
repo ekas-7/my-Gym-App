@@ -100,46 +100,11 @@ export interface ExerciseCategory {
 }
 
 export const weightTrainingCategories: ExerciseCategory[] = [
-  {
-    id: 'chest',
-    name: 'Chest',
-    exercises: chestExercises,
-    icon: '💪',
-  },
-  {
-    id: 'back',
-    name: 'Back',
-    exercises: backExercises,
-    icon: '🔥',
-  },
-  {
-    id: 'shoulders',
-    name: 'Shoulders',
-    exercises: shoulderExercises,
-    icon: '🏋️',
-  },
-  {
-    id: 'biceps',
-    name: 'Biceps',
-    exercises: bicepsExercises,
-    icon: '💪',
-  },
-  {
-    id: 'triceps',
-    name: 'Triceps',
-    exercises: tricepsExercises,
-    icon: '🔱',
-  },
-  {
-    id: 'abs',
-    name: 'Abs',
-    exercises: absExercises,
-    icon: '🎯',
-  },
-  {
-    id: 'legs',
-    name: 'Legs',
-    exercises: legsExercises,
-    icon: '🦵',
-  },
+  { id: 'chest',     name: 'Chest',     exercises: chestExercises,    icon: 'heart'    },
+  { id: 'back',      name: 'Back',      exercises: backExercises,     icon: 'shield'   },
+  { id: 'shoulders', name: 'Shoulders', exercises: shoulderExercises, icon: 'zap'      },
+  { id: 'biceps',    name: 'Biceps',    exercises: bicepsExercises,   icon: 'dumbbell' },
+  { id: 'triceps',   name: 'Triceps',   exercises: tricepsExercises,  icon: 'target'   },
+  { id: 'abs',       name: 'Abs',       exercises: absExercises,      icon: 'target'   },
+  { id: 'legs',      name: 'Legs',      exercises: legsExercises,     icon: 'run'      },
 ];

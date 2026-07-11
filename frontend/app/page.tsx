@@ -25,6 +25,8 @@ import {
   IconDroplet, IconUtensils, IconDumbbell, IconScale, IconFlame, IconBarChart,
   IconSun, IconMoon, IconSparkle, IconBrain, IconSpinner, IconCheck, IconTrendingUp,
   IconFile, IconBraces, IconApple, IconShield, IconToday,
+  IconGlass, IconBottle, IconJug,
+  IconHeart, IconTarget, IconZap, IconRun,
 } from "@/components/icons";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
@@ -162,6 +164,17 @@ function Gauge({ value, max, color }: { value: number; max: number; color: strin
   );
 }
 
+/* ─── Muscle group icon lookup (replaces emoji in exercises.ts) ──────────────*/
+const MUSCLE_ICONS: Record<string, React.ComponentType<{ size?: number; style?: React.CSSProperties }>> = {
+  heart:    IconHeart,
+  shield:   IconShield,
+  zap:      IconZap,
+  dumbbell: IconDumbbell,
+  target:   IconTarget,
+  run:      IconRun,
+  flame:    IconFlame,
+};
+
 /* ─── Bottom nav ─────────────────────────────────────────────────────────────*/
 
 const NAV = [
@@ -298,7 +311,22 @@ export default function Home() {
   /* ─── Data fetching ─────────────────────────────────────────────────────────*/
 
   const fetchUserProfile = useCallback(async (uid: string) => {
-    const p = await getProfile(uid);
+    let p = await getProfile(uid);
+    if (!p) {
+      // First sign-in: create a sensible default profile so Body Metrics works immediately
+      await saveProfile(uid, {
+        userId: uid,
+        height: 170,
+        currentWeight: 70,
+        targetWeight: 70,
+        bodyFatPercentage: 15,
+        dailyCalorieTarget: 2000,
+        dailyProteinTarget: 150,
+        waterGoal: 4,
+        exerciseGoal: 500,
+      } as unknown as IUserProfile);
+      p = await getProfile(uid);
+    }
     if (p) {
       setUserProfile(p);
       setDailyWaterGoal(p.waterGoal || 4);
@@ -655,30 +683,29 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Quick add + remove — 4 equal buttons */}
+              {/* Quick add + remove — 4 equal buttons with professional SVG icons */}
               <div className="grid grid-cols-4 gap-2">
-                {[
-                  { label: "Glass",  sub: "250ml", amount: 0.25 },
-                  { label: "Bottle", sub: "500ml", amount: 0.5  },
-                  { label: "Jug",    sub: "1 L",   amount: 1    },
-                ].map(({ label, sub, amount }) => (
-                  /* iOS HIG: 44pt min touch target — py-3 + text row ≈ 52px ✓ */
+                {([
+                  { Icon: IconGlass,  label: "Glass",  sub: "+250ml", amount: 0.25 },
+                  { Icon: IconBottle, label: "Bottle", sub: "+500ml", amount: 0.5  },
+                  { Icon: IconJug,    label: "Jug",    sub: "+1 L",   amount: 1    },
+                ] as const).map(({ Icon, label, sub, amount }) => (
                   <button key={label}
                     aria-label={`Add ${sub} water`}
                     onClick={() => { const n = Math.min(waterIntake + amount, dailyWaterGoal * 2); setWaterIntake(n); updateLog({ waterLiters: n }, n); }}
-                    className="rounded-xl py-3 flex flex-col items-center gap-0.5 active:scale-95 transition-all"
+                    className="rounded-xl py-3 flex flex-col items-center gap-1 active:scale-95 transition-all"
                     style={{ background: `${C.hydration}15`, border: `1px solid ${C.hydration}35` }}>
-                    <span className="font-headline text-sm" style={{ color: C.hydration }}>+{amount >= 1 ? amount : amount * 1000 >= 500 ? "½" : "¼"}</span>
+                    <Icon size={18} style={{ color: C.hydration }} />
                     <span className="font-label text-[11px] leading-tight" style={{ color: C.variant }}>{sub}</span>
                   </button>
                 ))}
                 <button
                   aria-label="Remove 250ml water"
                   onClick={() => { const n = Math.max(waterIntake - 0.25, 0); setWaterIntake(n); updateLog({ waterLiters: n }, n); }}
-                  className="rounded-xl py-3 flex flex-col items-center gap-0.5 active:scale-95 transition-all"
+                  className="rounded-xl py-3 flex flex-col items-center gap-1 active:scale-95 transition-all"
                   style={{ background: `${C.outline}30`, border: `1px solid ${C.outline}` }}>
-                  <span className="font-headline text-sm" style={{ color: C.variant }}>−¼</span>
-                  <span className="font-label text-[11px] leading-tight" style={{ color: C.variant }}>250ml</span>
+                  <IconDroplet size={18} style={{ color: C.variant }} />
+                  <span className="font-label text-[11px] leading-tight" style={{ color: C.variant }}>−250ml</span>
                 </button>
               </div>
 
@@ -802,7 +829,10 @@ export default function Home() {
                   </div>
                 </>
               ) : (
-                <div className="glass-card rounded-xl p-8 text-center" style={{ color: C.variant }}>Loading profile…</div>
+                <div className="glass-card rounded-xl p-8 text-center space-y-2" style={{ color: C.variant }}>
+                  <IconSpinner size={20} className="animate-spin mx-auto" style={{ color: C.hydration }} />
+                  <p className="font-body text-sm">Setting up your profile…</p>
+                </div>
               )}
             </div>
           </TabsContent>
@@ -876,7 +906,8 @@ export default function Home() {
                         border: `1px solid ${selectedMuscleGroup === cat.id ? C.exercise : C.outline}`,
                         color: selectedMuscleGroup === cat.id ? C.exercise : C.variant,
                       }}>
-                      <span className="text-lg mb-0.5">{cat.icon}</span>{cat.name}
+                      {(() => { const MI = MUSCLE_ICONS[cat.icon] ?? IconDumbbell; return <MI size={16} style={{ color: selectedMuscleGroup === cat.id ? C.exercise : C.variant }} />; })()}
+                      <span className="mt-0.5">{cat.name}</span>
                     </button>
                   ))}
                 </div>

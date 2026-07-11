@@ -323,6 +323,35 @@ export const IconShield = mk(
   </>
 );
 
+/** Water jug / pitcher – 1L quick-add */
+export const IconJug = mk(
+  <>
+    <path d="M7 3h10v2l1 2v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7l1-2V3Z" />
+    <path d="M17 7h2a2 2 0 0 1 0 4h-2" />
+    <line x1="9" y1="11" x2="15" y2="11" />
+  </>
+);
+
+/** Sunrise – breakfast */
+export const IconSunrise = mk(
+  <>
+    <path d="M12 2v2M4.93 4.93 6.35 6.35M2 12h2M19.07 4.93l-1.42 1.42M22 12h-2" />
+    <path d="M5 17a7 7 0 0 1 14 0" />
+    <line x1="3" y1="20" x2="21" y2="20" />
+  </>
+);
+
+/** Coffee cup – snack */
+export const IconCoffee = mk(
+  <>
+    <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
+    <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+    <line x1="6" y1="2" x2="6" y2="4" />
+    <line x1="10" y1="2" x2="10" y2="4" />
+    <line x1="14" y1="2" x2="14" y2="4" />
+  </>
+);
+
 /** Daily log / clipboard list – Today tab */
 export const IconToday = mk(
   <>

@@ -4,7 +4,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { IconSparkle } from '@/components/icons';
+import { IconSparkle, IconSunrise, IconSun, IconMoon, IconCoffee, IconUtensils } from '@/components/icons';
 import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { IMeal } from '@/models/Meal';
 
@@ -14,19 +14,19 @@ interface MealHistoryProps {
 }
 
 const mealTypeColors: Record<string, string> = {
-  breakfast: 'bg-orange-100 text-orange-800 border-orange-200',
-  lunch: 'bg-green-100 text-green-800 border-green-200',
-  dinner: 'bg-blue-100 text-blue-800 border-blue-200',
-  snack: 'bg-purple-100 text-purple-800 border-purple-200',
-  other: 'bg-gray-100 text-gray-800 border-gray-200',
+  breakfast: 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800',
+  lunch:     'bg-green-100  text-green-800  border-green-200  dark:bg-green-950/40  dark:text-green-300  dark:border-green-800',
+  dinner:    'bg-blue-100   text-blue-800   border-blue-200   dark:bg-blue-950/40   dark:text-blue-300   dark:border-blue-800',
+  snack:     'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800',
+  other:     'bg-gray-100   text-gray-800   border-gray-200   dark:bg-gray-800/60   dark:text-gray-300   dark:border-gray-600',
 };
 
-const mealTypeIcons: Record<string, string> = {
-  breakfast: '🌅',
-  lunch: '☀️',
-  dinner: '🌙',
-  snack: '🍪',
-  other: '🍽️',
+const MealTypeIcon: Record<string, React.ReactNode> = {
+  breakfast: <IconSunrise size={12} />,
+  lunch:     <IconSun     size={12} />,
+  dinner:    <IconMoon    size={12} />,
+  snack:     <IconCoffee  size={12} />,
+  other:     <IconUtensils size={12} />,
 };
 
 export function MealHistory({ meals, onDelete }: MealHistoryProps) {
@@ -64,8 +64,9 @@ export function MealHistory({ meals, onDelete }: MealHistoryProps) {
             >
               <Card className="p-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <Badge className={mealTypeColors[meal.mealType]}>
-                    {mealTypeIcons[meal.mealType]} {meal.mealType}
+                  <Badge className={`flex items-center gap-1 ${mealTypeColors[meal.mealType]}`}>
+                    {MealTypeIcon[meal.mealType]}
+                    <span className="capitalize">{meal.mealType}</span>
                   </Badge>
                   {meal.isAIAnalyzed && (
                     <Badge variant="outline" className="text-xs">
@@ -126,7 +127,7 @@ export function MealHistory({ meals, onDelete }: MealHistoryProps) {
               return (
                 <Card key={type} className="p-3">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">{mealTypeIcons[type]}</span>
+                    <span className="text-muted-foreground">{MealTypeIcon[type]}</span>
                     <div className="text-sm font-medium capitalize">{type}</div>
                   </div>
                   <div className="text-xs space-y-1">
@@ -169,9 +170,9 @@ export function MealTypeSelect({ value, onChange }: MealTypeSelectProps) {
           size="sm"
           variant={value === type ? 'default' : 'outline'}
           onClick={() => onChange(type)}
-          className="capitalize"
+          className="capitalize flex items-center gap-1.5"
         >
-          <span className="mr-1">{mealTypeIcons[type]}</span>
+          {MealTypeIcon[type]}
           {type}
         </Button>
       ))}

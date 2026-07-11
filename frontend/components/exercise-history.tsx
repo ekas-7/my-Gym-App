@@ -3,8 +3,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { IconSparkle, IconDumbbell, IconHeart, IconTimer, IconZap } from '@/components/icons';
+import { IconSparkle, IconDumbbell, IconHeart, IconTimer, IconZap, IconRun, IconShield, IconTarget, IconFlame } from '@/components/icons';
 import { SwipeToDelete } from '@/components/swipe-to-delete';
 import { IExercise } from '@/models/Exercise';
 
@@ -14,23 +13,26 @@ interface ExerciseHistoryProps {
 }
 
 const categoryColors: Record<string, string> = {
-  cardio: 'bg-red-100 text-red-800 border-red-200',
-  'weight-training': 'bg-blue-100 text-blue-800 border-blue-200',
+  cardio:            'bg-red-100  text-red-800  border-red-200  dark:bg-red-950/40  dark:text-red-300  dark:border-red-800',
+  'weight-training': 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
 };
 
 const categoryIcons: Record<string, React.ReactNode> = {
-  cardio: <IconHeart size={12} />,
+  cardio:            <IconRun      size={12} />,
   'weight-training': <IconDumbbell size={12} />,
 };
 
-const muscleGroupEmoji: Record<string, string> = {
-  chest: '💪',
-  back: '🦾',
-  shoulders: '🏋️',
-  legs: '🦵',
-  arms: '💪',
-  core: '🎯',
-  'full-body': '🔥',
+const MuscleIcon: Record<string, React.ReactNode> = {
+  chest:       <IconHeart    size={11} />,
+  back:        <IconShield   size={11} />,
+  shoulders:   <IconZap      size={11} />,
+  biceps:      <IconDumbbell size={11} />,
+  triceps:     <IconTarget   size={11} />,
+  abs:         <IconTarget   size={11} />,
+  legs:        <IconRun      size={11} />,
+  arms:        <IconDumbbell size={11} />,
+  core:        <IconTarget   size={11} />,
+  'full-body': <IconFlame    size={11} />,
 };
 
 export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
@@ -66,7 +68,7 @@ export function ExerciseHistory({ exercises, onDelete }: ExerciseHistoryProps) {
                   
                   {exercise.muscleGroup && (
                     <Badge variant="outline" className="text-xs">
-                      {muscleGroupEmoji[exercise.muscleGroup]} <span className="capitalize">{exercise.muscleGroup}</span>
+                      {MuscleIcon[exercise.muscleGroup]} <span className="capitalize">{exercise.muscleGroup}</span>
                     </Badge>
                   )}
                   
