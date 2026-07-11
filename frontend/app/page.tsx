@@ -54,21 +54,21 @@ const DARK = {
 } as const;
 
 const LIGHT = {
-  hydration: "#0099bb",
-  nutrition:  "#5a9200",
-  exercise:  "#e05a00",
-  streak:    "#c4005e",
+  hydration: "#0891b2",   /* deeper cyan — readable on white          */
+  nutrition:  "#4d7c0f",  /* olive lime                               */
+  exercise:  "#ea580c",   /* orange                                   */
+  streak:    "#be123c",   /* rose                                     */
   surface:   "#ffffff",
-  surfaceHigh: "#f0f0f0",
-  bg:        "#f4f4f5",
-  bgHero:    "radial-gradient(ellipse at 50% 0%, #0099bb14 0%, #f4f4f5 65%)",
-  onSurface: "#131313",
-  variant:   "#667080",
-  outline:   "#e0e0e0",
-  outlineVar:"#cccccc",
-  navBg:     "rgba(255,255,255,0.92)",
-  headerBg:  "rgba(244,244,245,0.90)",
-  inputBg:   "#f3f3f3",
+  surfaceHigh: "#eef2f7",
+  bg:        "#e9edf2",   /* cool grey so white cards pop             */
+  bgHero:    "radial-gradient(ellipse at 50% 0%, #0891b214 0%, #e9edf2 65%)",
+  onSurface: "#0f172a",   /* slate-900                                */
+  variant:   "#64748b",   /* slate-500                                */
+  outline:   "#e2e8f0",   /* slate-200                                */
+  outlineVar:"#cbd5e1",   /* slate-300                                */
+  navBg:     "rgba(255,255,255,0.90)",
+  headerBg:  "rgba(233,237,242,0.85)",
+  inputBg:   "#f1f5f9",   /* slate-100                                */
 } as const;
 
 /* ─── Types ──────────────────────────────────────────────────────────────────*/
@@ -1002,19 +1002,23 @@ export default function Home() {
 
             {exerciseCategory === "weight-training" && (
               <div className="space-y-4">
-                <div className="grid grid-cols-4 gap-2">
-                  {weightTrainingCategories.map(cat => (
-                    <button key={cat.id} onClick={() => setSelectedMuscleGroup(cat.id)}
-                      className="flex flex-col items-center py-2.5 rounded-xl text-xs font-headline active:scale-90 transition-all"
-                      style={{
-                        background: selectedMuscleGroup === cat.id ? `${C.exercise}20` : C.inputBg,
-                        border: `1px solid ${selectedMuscleGroup === cat.id ? C.exercise : C.outline}`,
-                        color: selectedMuscleGroup === cat.id ? C.exercise : C.variant,
-                      }}>
-                      {(() => { const MI = MUSCLE_ICONS[cat.icon] ?? IconDumbbell; return <MI size={16} style={{ color: selectedMuscleGroup === cat.id ? C.exercise : C.variant }} />; })()}
-                      <span className="mt-0.5">{cat.name}</span>
-                    </button>
-                  ))}
+                <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 pb-1">
+                  {weightTrainingCategories.map(cat => {
+                    const sel = selectedMuscleGroup === cat.id;
+                    const MI = MUSCLE_ICONS[cat.icon] ?? IconDumbbell;
+                    return (
+                      <button key={cat.id} onClick={() => setSelectedMuscleGroup(cat.id)}
+                        className="flex items-center gap-1.5 shrink-0 px-3.5 h-10 rounded-xl text-sm font-headline active:scale-90 transition-all"
+                        style={{
+                          background: sel ? C.exercise : C.inputBg,
+                          border: `1px solid ${sel ? C.exercise : C.outline}`,
+                          color: sel ? "#1a0800" : C.variant,
+                        }}>
+                        <MI size={16} style={{ color: sel ? "#1a0800" : C.variant }} />
+                        <span>{cat.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
                 {weightTrainingCategories.filter(c => c.id === selectedMuscleGroup).map(cat => (
                   <div key={cat.id} className="space-y-2">
