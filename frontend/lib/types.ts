@@ -85,6 +85,9 @@ export interface IExercise {
 
 export interface IUserProfile {
   id?: string;
+  height: number;                 // cm — used for BMI & body-fat estimate
+  age?: number;                   // years — used for body-fat estimate
+  gender?: 'male' | 'female';     // used for body-fat estimate
   currentWeight: number;
   targetWeight: number;
   bodyFatPercentage: number;
@@ -115,6 +118,32 @@ export interface IWeightLog {
 }
 
 // ─── Utility functions ────────────────────────────────────────────────────────
+
+/** Body Mass Index = weight(kg) / height(m)² */
+export function calculateBMI(weightKg: number, heightCm: number): number {
+  if (!weightKg || !heightCm) return 0;
+  const h = heightCm / 100;
+  return weightKg / (h * h);
+}
+
+/**
+ * Estimate body-fat % from weight, height, age and gender using the
+ * Deurenberg formula:  BF% = 1.20·BMI + 0.23·age − 10.8·sex − 5.4
+ * where sex = 1 (male) / 0 (female). Falls back to age 30 / male when unknown.
+ */
+export function estimateBodyFat(
+  weightKg: number,
+  heightCm: number,
+  age = 30,
+  gender: 'male' | 'female' = 'male'
+): number {
+  const bmi = calculateBMI(weightKg, heightCm);
+  if (!bmi) return 0;
+  const sex = gender === 'male' ? 1 : 0;
+  const bf = 1.2 * bmi + 0.23 * age - 10.8 * sex - 5.4;
+  return Math.max(3, Math.round(bf * 10) / 10);
+}
+
 
 export function calculateTDEE(bmr: number, activityLevel: string): number {
   const activityMultipliers: Record<string, number> = {

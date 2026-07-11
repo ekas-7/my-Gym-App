@@ -9,7 +9,7 @@ import {
   getExercises, addExercise, deleteExercise,
   saveWeightLog, getStreakLogs,
 } from "@/lib/firestore";
-import { IFitnessLog, IMeal, IExercise, IUserProfile } from "@/lib/types";
+import { IFitnessLog, IMeal, IExercise, IUserProfile, estimateBodyFat, calculateBMI } from "@/lib/types";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { CustomizableExerciseItem } from "@/components/customizable-exercise-item";
@@ -27,6 +27,7 @@ import {
   IconFile, IconBraces, IconApple, IconShield, IconToday,
   IconGlass, IconBottle, IconJug,
   IconHeart, IconTarget, IconZap, IconRun,
+  IconUser, IconLogOut, IconX, IconSave,
 } from "@/components/icons";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
@@ -272,7 +273,6 @@ export default function Home() {
   const [exerciseCalories,setExerciseCalories]= useState(0);
   const [exerciseGoal,    setExerciseGoal]    = useState(500);
   const [todayWeight,     setTodayWeight]     = useState<number|null>(null);
-  const [todayBodyFat,    setTodayBodyFat]    = useState<number|null>(null);
   const [weightSaved,     setWeightSaved]     = useState(false);
 
   /* app state */
@@ -282,6 +282,18 @@ export default function Home() {
   const [userProfile, setUserProfile] = useState<IUserProfile|null>(null);
   const [isLoading,   setIsLoading]   = useState(true);
   const [activeTab,   setActiveTab]   = useState("hydration");
+
+  /* profile settings modal */
+  const [showProfile,    setShowProfile]    = useState(false);
+  const [profileSaving,  setProfileSaving]  = useState(false);
+  const [pfHeight,       setPfHeight]       = useState("");
+  const [pfAge,          setPfAge]          = useState("");
+  const [pfGender,       setPfGender]       = useState<"male"|"female">("male");
+  const [pfTargetWeight, setPfTargetWeight] = useState("");
+  const [pfWaterGoal,    setPfWaterGoal]    = useState("");
+  const [pfCalorieGoal,  setPfCalorieGoal]  = useState("");
+  const [pfProteinGoal,  setPfProteinGoal]  = useState("");
+  const [pfExerciseGoal, setPfExerciseGoal] = useState("");
 
   /* AI / summary */
   const [summaryPeriod,    setSummaryPeriod]    = useState<"day"|"week"|"month"|"year">("day");
@@ -321,6 +333,8 @@ export default function Home() {
       await saveProfile(uid, {
         userId: uid,
         height: 170,
+        age: 25,
+        gender: "male",
         currentWeight: 70,
         targetWeight: 70,
         bodyFatPercentage: 15,
@@ -346,7 +360,6 @@ export default function Home() {
       setWaterIntake(log.waterLiters || 0);
       setExerciseCalories(log.exerciseCalories || 0);
       setTodayWeight(log.weight ?? null);
-      setTodayBodyFat(log.bodyFatPercentage ?? null);
     }
     setIsLoading(false);
   }, []);
@@ -529,7 +542,40 @@ export default function Home() {
     await signOut(auth);
     setWaterIntake(0); setCalories(0); setCarbs(0); setFats(0); setProtein(0); setExerciseCalories(0);
     setMeals([]); setExercises([]); setStreakLogs([]);
-    setUserProfile(null); setSummaryData(null); setAiAnalysis(null); setTodayWeight(null); setTodayBodyFat(null);
+    setUserProfile(null); setSummaryData(null); setAiAnalysis(null); setTodayWeight(null);
+    setShowProfile(false);
+  };
+
+  const openProfile = () => {
+    if (!userProfile) return;
+    setPfHeight(userProfile.height ? String(userProfile.height) : "");
+    setPfAge(userProfile.age ? String(userProfile.age) : "");
+    setPfGender(userProfile.gender ?? "male");
+    setPfTargetWeight(userProfile.targetWeight ? String(userProfile.targetWeight) : "");
+    setPfWaterGoal(String(dailyWaterGoal));
+    setPfCalorieGoal(String(calorieGoal));
+    setPfProteinGoal(String(proteinGoal));
+    setPfExerciseGoal(String(exerciseGoal));
+    setShowProfile(true);
+  };
+
+  const saveProfileSettings = async () => {
+    if (!currentUser) return;
+    setProfileSaving(true);
+    const update: Partial<IUserProfile> = {
+      height: parseFloat(pfHeight) || 170,
+      age: parseInt(pfAge) || undefined,
+      gender: pfGender,
+      targetWeight: parseFloat(pfTargetWeight) || undefined,
+      waterGoal: parseFloat(pfWaterGoal) || 4,
+      dailyCalorieTarget: parseInt(pfCalorieGoal) || 2000,
+      dailyProteinTarget: parseInt(pfProteinGoal) || 150,
+      exerciseGoal: parseInt(pfExerciseGoal) || 500,
+    };
+    await saveProfile(currentUser.uid, update);
+    await fetchUserProfile(currentUser.uid);
+    setProfileSaving(false);
+    setShowProfile(false);
   };
 
   /* ─── Splash / sign-in ───────────────────────────────────────────────────────*/
@@ -616,7 +662,7 @@ export default function Home() {
           paddingTop: "max(env(safe-area-inset-top), 0.75rem)",
         }}>
         <div className="flex items-center gap-3">
-          <button onClick={handleSignOut} className="active:scale-90 transition-transform" aria-label="Sign out">
+          <button onClick={openProfile} className="active:scale-90 transition-transform" aria-label="Open profile">
             {currentUser.photoURL
               ? <img src={currentUser.photoURL} alt="" className="w-10 h-10 rounded-full object-cover" style={{ border: `1px solid ${C.outline}` }} />
               : <div className="w-10 h-10 rounded-full glass-card flex items-center justify-center font-headline">
@@ -797,45 +843,69 @@ export default function Home() {
               <h3 className="font-headline text-sm flex items-center gap-2" style={{ color: C.onSurface }}>
                 <IconScale size={15} style={{ color: C.hydration }} /> Body Metrics
               </h3>
-              {userProfile ? (
+              {userProfile ? (() => {
+                const effWeight = todayWeight || userProfile.currentWeight;
+                const estBF = estimateBodyFat(effWeight, userProfile.height, userProfile.age, userProfile.gender);
+                const bmi   = calculateBMI(effWeight, userProfile.height);
+                return (
                 <>
                   <WeightGraph uid={currentUser.uid} days={30} targetWeight={userProfile.targetWeight} />
                   <div className="glass-card rounded-xl p-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { label: "Weight (kg)", value: todayWeight, onChange: (v: number) => { setTodayWeight(v); setWeightSaved(false); }, placeholder: userProfile.currentWeight.toString() },
-                        { label: "Body Fat (%)", value: todayBodyFat, onChange: (v: number) => { setTodayBodyFat(v); setWeightSaved(false); }, placeholder: userProfile.bodyFatPercentage.toString() },
-                      ].map(({ label, value, onChange, placeholder }) => (
-                        <div key={label} className="space-y-1.5">
-                          <label className="font-label text-xs uppercase tracking-widest" style={{ color: C.variant }}>{label}</label>
-                          <input type="number" step="0.1" inputMode="decimal" value={value || ""}
-                            onChange={e => onChange(parseFloat(e.target.value) || 0)}
-                            placeholder={placeholder}
-                            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                            style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
-                        </div>
-                      ))}
+                    <div className="space-y-1.5">
+                      <label className="font-label text-xs uppercase tracking-widest" style={{ color: C.variant }}>Weight (kg)</label>
+                      <input type="number" step="0.1" inputMode="decimal" value={todayWeight || ""}
+                        onChange={e => { setTodayWeight(parseFloat(e.target.value) || 0); setWeightSaved(false); }}
+                        placeholder={userProfile.currentWeight.toString()}
+                        className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                        style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
                     </div>
-                    {todayWeight && (
+
+                    {/* Auto-calculated metrics from height + weight */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-xl p-3" style={{ background: C.inputBg, border: `1px solid ${C.outlineVar}` }}>
+                        <div className="font-label text-[11px] uppercase tracking-widest" style={{ color: C.variant }}>Body Fat</div>
+                        <div className="font-display text-2xl mt-0.5" style={{ color: C.hydration }}>{estBF}<span className="text-sm font-headline">%</span></div>
+                        <div className="font-label text-[10px] mt-0.5" style={{ color: C.variant }}>est. from BMI</div>
+                      </div>
+                      <div className="rounded-xl p-3" style={{ background: C.inputBg, border: `1px solid ${C.outlineVar}` }}>
+                        <div className="font-label text-[11px] uppercase tracking-widest" style={{ color: C.variant }}>BMI</div>
+                        <div className="font-display text-2xl mt-0.5" style={{ color: C.nutrition }}>{bmi.toFixed(1)}</div>
+                        <div className="font-label text-[10px] mt-0.5" style={{ color: C.variant }}>
+                          {bmi < 18.5 ? "underweight" : bmi < 25 ? "healthy" : bmi < 30 ? "overweight" : "obese"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button onClick={openProfile} className="w-full text-left rounded-xl px-3 py-2 flex items-center justify-between active:scale-[0.98] transition-transform"
+                      style={{ background: "transparent", border: `1px dashed ${C.outlineVar}` }}>
+                      <span className="font-label text-[11px]" style={{ color: C.variant }}>
+                        Height {userProfile.height}cm · {userProfile.age ?? "—"}y · {userProfile.gender === "female" ? "F" : "M"}
+                      </span>
+                      <span className="font-label text-[11px]" style={{ color: C.hydration }}>Edit</span>
+                    </button>
+
+                    {todayWeight ? (
                       <p className="font-label text-xs" style={{ color: C.variant }}>
                         Change: {todayWeight > userProfile.currentWeight ? "+" : ""}{(todayWeight - userProfile.currentWeight).toFixed(1)} kg from baseline
                       </p>
-                    )}
+                    ) : null}
                     <button disabled={!todayWeight}
                       className="w-full h-11 rounded-xl font-headline text-sm active:scale-95 transition-all disabled:opacity-40"
                       style={{ background: weightSaved ? C.nutrition : C.hydration, color: weightSaved ? "#102000" : "#001f24" }}
                       onClick={async () => {
                         if (!todayWeight || !currentUser) return;
                         const today = todayMidnight();
-                        await saveWeightLog(currentUser.uid, today, { date: today, weight: todayWeight, bodyFatPercentage: todayBodyFat || undefined });
-                        await updateLog({ weight: todayWeight, bodyFatPercentage: todayBodyFat || undefined });
+                        const bf = estimateBodyFat(todayWeight, userProfile.height, userProfile.age, userProfile.gender);
+                        await saveWeightLog(currentUser.uid, today, { date: today, weight: todayWeight, bodyFatPercentage: bf });
+                        await updateLog({ weight: todayWeight, bodyFatPercentage: bf });
                         setWeightSaved(true);
                       }}>
                       <IconCheck size={15} className="inline mr-1.5" />{weightSaved ? "Saved!" : "Save Measurements"}
                     </button>
                   </div>
                 </>
-              ) : (
+                );
+              })() : (
                 <div className="glass-card rounded-xl p-8 text-center space-y-2" style={{ color: C.variant }}>
                   <IconSpinner size={20} className="animate-spin mx-auto" style={{ color: C.hydration }} />
                   <p className="font-body text-sm">Setting up your profile…</p>
@@ -1135,6 +1205,105 @@ export default function Home() {
 
         </Tabs>
       </div>
+
+      {/* ── Profile settings sheet ── */}
+      {showProfile && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={() => setShowProfile(false)}>
+          <div className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl glass-overlay overflow-y-auto"
+            style={{ maxHeight: "88vh", border: `1px solid ${C.outlineVar}`, paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}
+            onClick={e => e.stopPropagation()}>
+            {/* header */}
+            <div className="sticky top-0 z-10 px-5 py-4 flex items-center justify-between glass-overlay"
+              style={{ borderBottom: `1px solid ${C.outlineVar}` }}>
+              <div className="flex items-center gap-3">
+                {currentUser.photoURL
+                  ? <img src={currentUser.photoURL} alt="" className="w-10 h-10 rounded-full object-cover" style={{ border: `1px solid ${C.outline}` }} />
+                  : <div className="w-10 h-10 rounded-full glass-card flex items-center justify-center font-headline"><IconUser size={18} /></div>}
+                <div>
+                  <div className="font-headline text-base" style={{ color: C.onSurface }}>{currentUser.displayName ?? "Athlete"}</div>
+                  <div className="font-label text-[11px]" style={{ color: C.variant }}>{currentUser.email}</div>
+                </div>
+              </div>
+              <button onClick={() => setShowProfile(false)} className="w-9 h-9 rounded-full flex items-center justify-center glass-card active:scale-90 transition-transform" aria-label="Close profile">
+                <IconX size={16} style={{ color: C.variant }} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {/* Body basics */}
+              <div className="space-y-3">
+                <h4 className="font-label text-xs uppercase tracking-widest" style={{ color: C.hydration }}>Body</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="font-label text-[11px] uppercase tracking-wider" style={{ color: C.variant }}>Height (cm)</label>
+                    <input type="number" inputMode="decimal" value={pfHeight} onChange={e => setPfHeight(e.target.value)} placeholder="170"
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-label text-[11px] uppercase tracking-wider" style={{ color: C.variant }}>Age</label>
+                    <input type="number" inputMode="numeric" value={pfAge} onChange={e => setPfAge(e.target.value)} placeholder="25"
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-label text-[11px] uppercase tracking-wider" style={{ color: C.variant }}>Gender</label>
+                  <div className="flex gap-2 p-1 rounded-2xl" style={{ background: C.inputBg, border: `1px solid ${C.outline}` }}>
+                    {(["male", "female"] as const).map(g => {
+                      const active = pfGender === g;
+                      return (
+                        <button key={g} onClick={() => setPfGender(g)}
+                          className="flex-1 h-10 rounded-xl font-headline text-sm capitalize active:scale-95 transition-all"
+                          style={{ background: active ? C.hydration : "transparent", color: active ? "#001f24" : C.variant }}>
+                          {g}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="font-label text-[10px]" style={{ color: C.variant }}>Used to estimate body-fat % from your weight.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-label text-[11px] uppercase tracking-wider" style={{ color: C.variant }}>Target Weight (kg)</label>
+                  <input type="number" inputMode="decimal" value={pfTargetWeight} onChange={e => setPfTargetWeight(e.target.value)} placeholder="70"
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                </div>
+              </div>
+
+              {/* Daily goals */}
+              <div className="space-y-3">
+                <h4 className="font-label text-xs uppercase tracking-widest" style={{ color: C.nutrition }}>Daily Goals</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Water (L)",    v: pfWaterGoal,    set: setPfWaterGoal,    ph: "4" },
+                    { label: "Calories",     v: pfCalorieGoal,  set: setPfCalorieGoal,  ph: "2000" },
+                    { label: "Protein (g)",  v: pfProteinGoal,  set: setPfProteinGoal,  ph: "150" },
+                    { label: "Exercise cal", v: pfExerciseGoal, set: setPfExerciseGoal, ph: "500" },
+                  ].map(({ label, v, set, ph }) => (
+                    <div key={label} className="space-y-1.5">
+                      <label className="font-label text-[11px] uppercase tracking-wider" style={{ color: C.variant }}>{label}</label>
+                      <input type="number" inputMode="decimal" value={v} onChange={e => set(e.target.value)} placeholder={ph}
+                        className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button onClick={saveProfileSettings} disabled={profileSaving}
+                className="w-full h-12 rounded-xl font-headline text-sm active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                style={{ background: C.hydration, color: "#001f24" }}>
+                {profileSaving ? <IconSpinner size={16} className="animate-spin" /> : <><IconSave size={16} />Save Profile</>}
+              </button>
+
+              <button onClick={handleSignOut}
+                className="w-full h-11 rounded-xl font-headline text-sm active:scale-95 transition-all flex items-center justify-center gap-2"
+                style={{ background: "transparent", border: `1px solid ${C.outline}`, color: C.streak }}>
+                <IconLogOut size={16} />Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── iOS install banner ── */}
       <InstallPWABanner />
