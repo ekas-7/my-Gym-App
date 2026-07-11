@@ -51,21 +51,21 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
-        name: "Log Water",
-        short_name: "Water",
-        url: "/?tab=hydration",
+        name: "Daily Log",
+        short_name: "Today",
+        url: "/?tab=today",
         icons: [{ src: "/icon-192x192.png", sizes: "192x192" }],
       },
       {
-        name: "Log Food",
-        short_name: "Diet",
-        url: "/?tab=diet",
-        icons: [{ src: "/icon-192x192.png", sizes: "192x192" }],
-      },
-      {
-        name: "Log Exercise",
+        name: "Training",
         short_name: "Train",
-        url: "/?tab=exercise",
+        url: "/?tab=train",
+        icons: [{ src: "/icon-192x192.png", sizes: "192x192" }],
+      },
+      {
+        name: "Progress & Stats",
+        short_name: "Progress",
+        url: "/?tab=progress",
         icons: [{ src: "/icon-192x192.png", sizes: "192x192" }],
       },
     ],

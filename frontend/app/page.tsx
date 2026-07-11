@@ -24,7 +24,7 @@ import { InstallPWABanner } from "@/components/install-pwa-banner";
 import {
   IconDroplet, IconUtensils, IconDumbbell, IconScale, IconFlame, IconBarChart,
   IconSun, IconMoon, IconSparkle, IconBrain, IconSpinner, IconCheck, IconTrendingUp,
-  IconGlass, IconBottle, IconFile, IconBraces, IconApple, IconShield,
+  IconGlass, IconBottle, IconFile, IconBraces, IconApple, IconShield, IconToday,
 } from "@/components/icons";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
@@ -165,13 +165,17 @@ function Gauge({ value, max, color }: { value: number; max: number; color: strin
 /* ─── Bottom nav ─────────────────────────────────────────────────────────────*/
 
 const NAV = [
-  { id: "hydration", Icon: IconDroplet,  label: "Water"  },
-  { id: "diet",      Icon: IconUtensils, label: "Diet"   },
-  { id: "exercise",  Icon: IconDumbbell, label: "Train"  },
-  { id: "weight",    Icon: IconScale,    label: "Weight" },
-  { id: "streak",    Icon: IconFlame,    label: "Streak" },
-  { id: "summary",   Icon: IconBarChart, label: "Stats"  },
+  { id: "today",    Icon: IconToday,    label: "Today"    },
+  { id: "train",    Icon: IconDumbbell, label: "Train"    },
+  { id: "progress", Icon: IconBarChart, label: "Progress" },
 ] as const;
+
+/* Map old persisted tab ids → new ids */
+const TAB_REMAP: Record<string, string> = {
+  hydration: "today", diet: "today", weight: "today",
+  exercise: "train",
+  streak: "progress", summary: "progress",
+};
 
 /* ─── Helpers ────────────────────────────────────────────────────────────────*/
 
@@ -281,12 +285,13 @@ export default function Home() {
   const [exerciseCategory,       setExerciseCategory]      = useState<"cardio"|"weight-training">("cardio");
   const [selectedMuscleGroup,    setSelectedMuscleGroup]   = useState<"chest"|"back"|"shoulders"|"biceps"|"triceps"|"abs"|"legs">("chest");
 
-  /* tab persistence + shortcut URL param (?tab=hydration) */
+  /* tab persistence + shortcut URL param (?tab=today) */
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get("tab");
-    const saved    = localStorage.getItem("fitActiveTab");
-    setActiveTab(tabParam || saved || "hydration");
+    const params   = new URLSearchParams(window.location.search);
+    const raw      = params.get("tab") || localStorage.getItem("fitActiveTab") || "today";
+    const valid    = ["today", "train", "progress"];
+    const resolved = TAB_REMAP[raw] ?? raw;
+    setActiveTab(valid.includes(resolved) ? resolved : "today");
   }, []);
   useEffect(() => { if (isMounted) localStorage.setItem("fitActiveTab", activeTab); }, [activeTab, isMounted]);
 
@@ -627,133 +632,180 @@ export default function Home() {
       <div className="flex-1 overflow-y-auto pb-28">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
 
-          {/* ── HYDRATION ─────────────────────────────────────────────────── */}
-          <TabsContent value="hydration" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
-            <div className="flex items-end justify-between">
-              <div>
-                <h2 className="font-headline text-title-md flex items-center gap-2" style={{ color: C.onSurface }}>
-                  <IconDroplet size={20} style={{ color: C.hydration }} /> Hydration
-                </h2>
-                <p className="font-label text-[11px]" style={{ color: C.variant }}>{waterIntake.toFixed(2)}L / {dailyWaterGoal}L Target</p>
-              </div>
-              <button onClick={() => { setWaterIntake(0); updateLog({ waterLiters: 0 }, 0); }}
-                className="font-label text-xs px-3 py-1.5 rounded-lg glass-card active:scale-90 transition-transform"
-                style={{ color: C.variant, border: `1px solid ${C.outline}` }}>Reset</button>
-            </div>
+          {/* ── TODAY (Hydration + Nutrition + Body) ──────────────────────── */}
+          <TabsContent value="today" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
 
-            {/* Animated gauge */}
-            <div className="h-4 rounded-full overflow-hidden" style={{ background: `${C.hydration}1a` }}>
-              <div className="h-full rounded-full transition-all duration-700 relative"
-                style={{ width: `${Math.min((waterIntake/dailyWaterGoal)*100,100)}%`, background: C.hydration, boxShadow: `0 0 12px ${C.hydration}80` }}>
-                <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
-              </div>
-            </div>
-
-            {/* Quick add buttons */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: "Glass", amount: 0.25, Icon: IconGlass },
-                { label: "Bottle", amount: 0.5,  Icon: IconBottle },
-                { label: "Jug",    amount: 1,     Icon: IconDroplet },
-              ].map(({ label, amount, Icon }) => (
-                <button key={label}
-                  onClick={() => { const n = Math.min(waterIntake + amount, dailyWaterGoal * 2); setWaterIntake(n); updateLog({ waterLiters: n }, n); }}
-                  className="glass-card rounded-xl p-3 text-center active:scale-95 transition-all"
-                  style={{ border: `1px solid ${C.hydration}30` }}>
-                  <span className="flex justify-center mb-1" style={{ color: C.hydration }}><Icon size={24} /></span>
-                  <span className="font-label text-[10px] block" style={{ color: C.variant }}>{label}</span>
-                  <span className="font-headline text-sm" style={{ color: C.onSurface }}>{amount * 1000}ml</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Also allow removing */}
-            <button onClick={() => { const n = Math.max(waterIntake - 0.25, 0); setWaterIntake(n); updateLog({ waterLiters: n }, n); }}
-              className="w-full h-12 rounded-xl font-headline text-sm glass-card active:scale-95 transition-all"
-              style={{ color: C.variant, border: `1px solid ${C.outline}` }}>
-              − Remove 250ml
-            </button>
-
-            {/* Water cup grid */}
-            <div className="grid grid-cols-4 gap-2">
-              {Array.from({ length: Math.ceil(dailyWaterGoal / 0.25) }).map((_, i) => {
-                const t = (i + 1) * 0.25;
-                return (
-                  <div key={i} className="h-14 rounded-xl flex items-center justify-center transition-all"
-                    style={{
-                      background: waterIntake >= t ? `${C.hydration}20` : `${C.surface}60`,
-                      border: `1px solid ${waterIntake >= t ? C.hydration + "50" : C.outline}`,
-                    }}>
-                    {waterIntake >= t && <IconDroplet size={18} style={{ color: C.hydration }} />}
-                  </div>
-                );
-              })}
-            </div>
-          </TabsContent>
-
-          {/* ── DIET ──────────────────────────────────────────────────────── */}
-          <TabsContent value="diet" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
-            <h2 className="font-headline text-title-md flex items-center gap-2" style={{ color: C.onSurface }}>
-              <IconUtensils size={20} style={{ color: C.nutrition }} /> Nutrition Macros
-            </h2>
-
-            {/* Macro bars */}
-            <div className="glass-card rounded-xl p-5 space-y-5">
-              {[
-                { label: "Calories", value: calories, goal: calorieGoal, unit: "kcal", color: C.nutrition },
-                { label: "Protein",  value: protein,  goal: proteinGoal, unit: "g",    color: C.hydration },
-                { label: "Carbs",    value: carbs,    goal: carbsGoal,   unit: "g",    color: C.nutrition },
-                { label: "Fats",     value: fats,     goal: fatsGoal,    unit: "g",    color: C.exercise },
-              ].map(({ label, value, goal, unit, color }) => (
-                <div key={label} className="space-y-1.5">
-                  <div className="flex justify-between">
-                    <span className="font-body text-sm" style={{ color: C.onSurface }}>{label}</span>
-                    <span className="font-label text-xs" style={{ color: C.variant }}>{typeof value === "number" ? (Number.isInteger(value) ? value : value.toFixed(1)) : value}{unit} / {goal}{unit}</span>
-                  </div>
-                  <Gauge value={value} max={goal} color={color} />
-                </div>
-              ))}
-            </div>
-
-            {/* Add food */}
+            {/* ── Water ── */}
             <div className="glass-card rounded-xl p-4 space-y-3">
-              <div>
-                <label className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>Meal Type</label>
-                <div className="mt-2">
-                  <MealTypeSelect value={mealType} onChange={setMealType} />
+              <div className="flex items-center justify-between">
+                <h3 className="font-headline text-sm flex items-center gap-2" style={{ color: C.onSurface }}>
+                  <IconDroplet size={15} style={{ color: C.hydration }} /> Hydration
+                  <span className="font-label text-xs font-normal" style={{ color: C.variant }}>{waterIntake.toFixed(1)}L / {dailyWaterGoal}L</span>
+                </h3>
+                <button onClick={() => { setWaterIntake(0); updateLog({ waterLiters: 0 }, 0); }}
+                  className="font-label text-[10px] px-2.5 py-1 rounded-lg glass-card active:scale-90 transition-transform"
+                  style={{ color: C.variant, border: `1px solid ${C.outline}` }}>Reset</button>
+              </div>
+
+              {/* gauge */}
+              <div className="h-3 rounded-full overflow-hidden" style={{ background: `${C.hydration}1a` }}>
+                <div className="h-full rounded-full transition-all duration-700 relative"
+                  style={{ width: `${Math.min((waterIntake/dailyWaterGoal)*100,100)}%`, background: C.hydration, boxShadow: `0 0 10px ${C.hydration}70` }}>
+                  <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
                 </div>
               </div>
-              <div>
-                <label className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>Describe your meal</label>
-                <div className="flex gap-2 mt-2">
-                  <input type="text" value={foodDescription} onChange={e => setFoodDescription(e.target.value)}
-                    placeholder="e.g. 2 eggs, toast, coffee…" disabled={isAnalyzing}
-                    onKeyDown={e => e.key === "Enter" && analyzeFood()}
-                    className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
-                  <button onClick={analyzeFood} disabled={isAnalyzing || !foodDescription.trim()}
-                    className="px-4 rounded-xl font-headline text-sm active:scale-95 transition-all disabled:opacity-40"
-                    style={{ background: C.nutrition, color: "#102000" }}>
-                    {isAnalyzing ? <IconSpinner size={16} className="animate-spin" /> : <><IconSparkle size={14} className="inline mr-1" />AI</>}
+
+              {/* Quick add + remove */}
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: "250ml", amount: 0.25, Icon: IconGlass },
+                  { label: "500ml", amount: 0.5,  Icon: IconBottle },
+                  { label: "1 L",   amount: 1,     Icon: IconDroplet },
+                ].map(({ label, amount, Icon }) => (
+                  <button key={label}
+                    onClick={() => { const n = Math.min(waterIntake + amount, dailyWaterGoal * 2); setWaterIntake(n); updateLog({ waterLiters: n }, n); }}
+                    className="glass-card rounded-xl py-2.5 flex flex-col items-center gap-0.5 active:scale-95 transition-all"
+                    style={{ border: `1px solid ${C.hydration}30` }}>
+                    <Icon size={18} style={{ color: C.hydration }} />
+                    <span className="font-label text-[9px]" style={{ color: C.variant }}>{label}</span>
                   </button>
-                </div>
-                {analysisError && <p className="text-xs mt-1" style={{ color: "#ffb4ab" }}>{analysisError}</p>}
+                ))}
+                <button
+                  onClick={() => { const n = Math.max(waterIntake - 0.25, 0); setWaterIntake(n); updateLog({ waterLiters: n }, n); }}
+                  className="glass-card rounded-xl py-2.5 flex flex-col items-center gap-0.5 active:scale-95 transition-all"
+                  style={{ border: `1px solid ${C.outline}` }}>
+                  <span className="font-headline text-base" style={{ color: C.variant }}>−</span>
+                  <span className="font-label text-[9px]" style={{ color: C.variant }}>Remove</span>
+                </button>
+              </div>
+
+              {/* Cup progress dots */}
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from({ length: Math.ceil(dailyWaterGoal / 0.25) }).map((_, i) => {
+                  const t = (i + 1) * 0.25;
+                  return (
+                    <div key={i} className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                      style={{
+                        background: waterIntake >= t ? `${C.hydration}25` : `${C.surface}60`,
+                        border: `1px solid ${waterIntake >= t ? C.hydration + "60" : C.outline}`,
+                      }}>
+                      {waterIntake >= t && <IconDroplet size={13} style={{ color: C.hydration }} />}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Meal history */}
-            <div className="glass-card rounded-xl overflow-hidden">
-              <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-                <span className="font-headline text-sm" style={{ color: C.onSurface }}>Today's Meals</span>
-                <button className="font-label text-xs active:opacity-70" style={{ color: C.variant }}
-                  onClick={() => { setCalories(0); setCarbs(0); setFats(0); setProtein(0); updateLog({ calories: 0, carbs: 0, fats: 0, protein: 0 }); }}>Clear all</button>
+            {/* ── Nutrition ── */}
+            <div className="space-y-3">
+              <h3 className="font-headline text-sm flex items-center gap-2" style={{ color: C.onSurface }}>
+                <IconUtensils size={15} style={{ color: C.nutrition }} /> Nutrition
+              </h3>
+
+              {/* Macro bars */}
+              <div className="glass-card rounded-xl p-4 space-y-4">
+                {[
+                  { label: "Calories", value: calories, goal: calorieGoal, unit: "kcal", color: C.nutrition },
+                  { label: "Protein",  value: protein,  goal: proteinGoal, unit: "g",    color: C.hydration },
+                  { label: "Carbs",    value: carbs,    goal: carbsGoal,   unit: "g",    color: C.nutrition },
+                  { label: "Fats",     value: fats,     goal: fatsGoal,    unit: "g",    color: C.exercise },
+                ].map(({ label, value, goal, unit, color }) => (
+                  <div key={label} className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="font-body text-sm" style={{ color: C.onSurface }}>{label}</span>
+                      <span className="font-label text-xs" style={{ color: C.variant }}>{typeof value === "number" ? (Number.isInteger(value) ? value : value.toFixed(1)) : value}{unit} / {goal}{unit}</span>
+                    </div>
+                    <Gauge value={value} max={goal} color={color} />
+                  </div>
+                ))}
               </div>
-              <div className="px-4 pb-4"><MealHistory meals={meals} onDelete={handleDeleteMeal} /></div>
+
+              {/* AI food input */}
+              <div className="glass-card rounded-xl p-4 space-y-3">
+                <div>
+                  <label className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>Meal Type</label>
+                  <div className="mt-2"><MealTypeSelect value={mealType} onChange={setMealType} /></div>
+                </div>
+                <div>
+                  <label className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>Describe your meal</label>
+                  <div className="flex gap-2 mt-2">
+                    <input type="text" value={foodDescription} onChange={e => setFoodDescription(e.target.value)}
+                      placeholder="e.g. 2 eggs, toast, coffee…" disabled={isAnalyzing}
+                      onKeyDown={e => e.key === "Enter" && analyzeFood()}
+                      className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
+                      style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                    <button onClick={analyzeFood} disabled={isAnalyzing || !foodDescription.trim()}
+                      className="px-4 rounded-xl font-headline text-sm active:scale-95 transition-all disabled:opacity-40"
+                      style={{ background: C.nutrition, color: "#102000" }}>
+                      {isAnalyzing ? <IconSpinner size={16} className="animate-spin" /> : <><IconSparkle size={14} className="inline mr-1" />AI</>}
+                    </button>
+                  </div>
+                  {analysisError && <p className="text-xs mt-1" style={{ color: "#ffb4ab" }}>{analysisError}</p>}
+                </div>
+              </div>
+
+              {/* Meal history */}
+              <div className="glass-card rounded-xl overflow-hidden">
+                <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+                  <span className="font-headline text-sm" style={{ color: C.onSurface }}>Today's Meals</span>
+                  <button className="font-label text-xs active:opacity-70" style={{ color: C.variant }}
+                    onClick={() => { setCalories(0); setCarbs(0); setFats(0); setProtein(0); updateLog({ calories: 0, carbs: 0, fats: 0, protein: 0 }); }}>Clear all</button>
+                </div>
+                <div className="px-4 pb-4"><MealHistory meals={meals} onDelete={handleDeleteMeal} /></div>
+              </div>
+            </div>
+
+            {/* ── Body Metrics ── */}
+            <div className="space-y-3">
+              <h3 className="font-headline text-sm flex items-center gap-2" style={{ color: C.onSurface }}>
+                <IconScale size={15} style={{ color: C.hydration }} /> Body Metrics
+              </h3>
+              {userProfile ? (
+                <>
+                  <WeightGraph uid={currentUser.uid} days={30} targetWeight={userProfile.targetWeight} />
+                  <div className="glass-card rounded-xl p-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { label: "Weight (kg)", value: todayWeight, onChange: (v: number) => { setTodayWeight(v); setWeightSaved(false); }, placeholder: userProfile.currentWeight.toString() },
+                        { label: "Body Fat (%)", value: todayBodyFat, onChange: (v: number) => { setTodayBodyFat(v); setWeightSaved(false); }, placeholder: userProfile.bodyFatPercentage.toString() },
+                      ].map(({ label, value, onChange, placeholder }) => (
+                        <div key={label} className="space-y-1.5">
+                          <label className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>{label}</label>
+                          <input type="number" step="0.1" value={value || ""}
+                            onChange={e => onChange(parseFloat(e.target.value) || 0)}
+                            placeholder={placeholder}
+                            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                            style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
+                        </div>
+                      ))}
+                    </div>
+                    {todayWeight && (
+                      <p className="font-label text-xs" style={{ color: C.variant }}>
+                        Change: {todayWeight > userProfile.currentWeight ? "+" : ""}{(todayWeight - userProfile.currentWeight).toFixed(1)} kg from baseline
+                      </p>
+                    )}
+                    <button disabled={!todayWeight}
+                      className="w-full h-11 rounded-xl font-headline text-sm active:scale-95 transition-all disabled:opacity-40"
+                      style={{ background: weightSaved ? C.nutrition : C.hydration, color: weightSaved ? "#102000" : "#001f24" }}
+                      onClick={async () => {
+                        if (!todayWeight || !currentUser) return;
+                        const today = todayMidnight();
+                        await saveWeightLog(currentUser.uid, today, { date: today, weight: todayWeight, bodyFatPercentage: todayBodyFat || undefined });
+                        await updateLog({ weight: todayWeight, bodyFatPercentage: todayBodyFat || undefined });
+                        setWeightSaved(true);
+                      }}>
+                      <IconCheck size={15} className="inline mr-1.5" />{weightSaved ? "Saved!" : "Save Measurements"}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="glass-card rounded-xl p-8 text-center" style={{ color: C.variant }}>Loading profile…</div>
+              )}
             </div>
           </TabsContent>
 
-          {/* ── EXERCISE ──────────────────────────────────────────────────── */}
-          <TabsContent value="exercise" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
+          {/* ── TRAIN (Exercise) ──────────────────────────────────────────── */}
+          <TabsContent value="train" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
             <div className="flex items-end justify-between">
               <h2 className="font-headline text-title-md flex items-center gap-2" style={{ color: C.onSurface }}>
                 <IconDumbbell size={20} style={{ color: C.exercise }} /> Training
@@ -853,58 +905,10 @@ export default function Home() {
             )}
           </TabsContent>
 
-          {/* ── WEIGHT ────────────────────────────────────────────────────── */}
-          <TabsContent value="weight" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
-            <h2 className="font-headline text-title-md flex items-center gap-2" style={{ color: C.onSurface }}>
-              <IconScale size={20} style={{ color: C.hydration }} /> Body Metrics
-            </h2>
-            {userProfile ? (
-              <>
-                <WeightGraph uid={currentUser.uid} days={30} targetWeight={userProfile.targetWeight} />
-                <div className="glass-card rounded-xl p-5 space-y-4">
-                  <h3 className="font-headline text-sm" style={{ color: C.onSurface }}>Today's Measurements</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { label: "Weight (kg)", value: todayWeight, onChange: (v: number) => { setTodayWeight(v); setWeightSaved(false); }, placeholder: userProfile.currentWeight.toString() },
-                      { label: "Body Fat (%)", value: todayBodyFat, onChange: (v: number) => { setTodayBodyFat(v); setWeightSaved(false); }, placeholder: userProfile.bodyFatPercentage.toString() },
-                    ].map(({ label, value, onChange, placeholder }) => (
-                      <div key={label} className="space-y-1.5">
-                        <label className="font-label text-[10px] uppercase tracking-widest" style={{ color: C.variant }}>{label}</label>
-                        <input type="number" step="0.1" value={value || ""}
-                          onChange={e => onChange(parseFloat(e.target.value) || 0)}
-                          placeholder={placeholder}
-                          className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                          style={{ background: C.inputBg, border: `1px solid ${C.outline}`, color: C.onSurface }} />
-                      </div>
-                    ))}
-                  </div>
-                  {todayWeight && (
-                    <p className="font-label text-xs" style={{ color: C.variant }}>
-                      Change: {todayWeight > userProfile.currentWeight ? "+" : ""}{(todayWeight - userProfile.currentWeight).toFixed(1)} kg
-                    </p>
-                  )}
-                  <button disabled={!todayWeight}
-                    className="w-full h-12 rounded-xl font-headline text-sm active:scale-95 transition-all disabled:opacity-40"
-                    style={{ background: weightSaved ? C.nutrition : C.hydration, color: weightSaved ? "#102000" : "#001f24" }}
-                    onClick={async () => {
-                      if (!todayWeight || !currentUser) return;
-                      const today = todayMidnight();
-                      await saveWeightLog(currentUser.uid, today, { date: today, weight: todayWeight, bodyFatPercentage: todayBodyFat || undefined });
-                      await updateLog({ weight: todayWeight, bodyFatPercentage: todayBodyFat || undefined });
-                      setWeightSaved(true);
-                    }}>
-                    {weightSaved ? "✓ Saved!" : "Save Measurements"}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="glass-card rounded-xl p-8 text-center" style={{ color: C.variant }}>Loading profile…</div>
-            )}
-          </TabsContent>
+          {/* ── PROGRESS (Streak + Summary + AI) ─────────────────────────── */}
+          <TabsContent value="progress" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
 
-          {/* ── STREAK ────────────────────────────────────────────────────── */}
-          <TabsContent value="streak" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
-            {/* Streak hero card */}
+            {/* Streak hero */}
             <div className="glass-card rounded-xl p-5 relative overflow-hidden"
               style={{ borderLeft: `4px solid ${C.nutrition}` }}>
               <div className="absolute top-3 right-3 opacity-10" style={{ color: C.nutrition }}>
@@ -929,20 +933,21 @@ export default function Home() {
             </div>
 
             <div className="glass-card rounded-xl p-4">
-              <h3 className="font-headline text-sm mb-3" style={{ color: C.onSurface }}>Activity Heatmap</h3>
+              <h3 className="font-headline text-sm mb-2" style={{ color: C.onSurface }}>Activity Heatmap</h3>
               <p className="font-label text-[10px] mb-3 uppercase tracking-widest" style={{ color: C.variant }}>
                 Green = all goals · Yellow = partial · Gray = minimal
               </p>
               <StreakCalendar logs={streakLogs} monthsToShow={1} />
             </div>
-          </TabsContent>
 
-          {/* ── SUMMARY ───────────────────────────────────────────────────── */}
-          <TabsContent value="summary" className="mt-0 px-5 pt-2 space-y-5 max-w-lg mx-auto">
+            {/* divider */}
+            <div style={{ height: 1, background: `${C.outline}50` }} />
+
+            {/* Summary */}
             <div className="flex items-center justify-between">
-              <h2 className="font-headline text-title-md flex items-center gap-2" style={{ color: C.onSurface }}>
-                <IconBarChart size={20} style={{ color: C.hydration }} /> Summary
-              </h2>
+              <h3 className="font-headline text-sm flex items-center gap-2" style={{ color: C.onSurface }}>
+                <IconBarChart size={15} style={{ color: C.hydration }} /> Summary
+              </h3>
               <div className="flex gap-1">
                 {(["day", "week", "month", "year"] as const).map(p => (
                   <button key={p} onClick={() => setSummaryPeriod(p)}
@@ -958,11 +963,11 @@ export default function Home() {
             </div>
 
             {isSummaryLoading ? (
-              <div className="flex justify-center py-12">
+              <div className="flex justify-center py-8">
                 <IconSpinner size={24} className="animate-spin" style={{ color: C.hydration }} />
               </div>
             ) : (
-              <div className="glass-card rounded-xl p-5 space-y-5">
+              <div className="glass-card rounded-xl p-4 space-y-4">
                 {[
                   { label: "Hydration", Icon: IconDroplet,  pct: getSd().water.percentage, consumed: `${getSd().water.consumed.toFixed(1)}L`, goal: `${(getSd().water.goal * getSd().totalDays).toFixed(1)}L`, color: C.hydration },
                   { label: "Calories",  Icon: IconUtensils, pct: getSd().calories.percentage, consumed: `${Math.round(getSd().calories.consumed)} kcal`, goal: `${Math.round(getSd().calories.goal * getSd().totalDays)} kcal`, color: C.nutrition },
@@ -1098,7 +1103,7 @@ export default function Home() {
         <div className="flex items-stretch justify-around px-2 pt-2 pb-1">
           {NAV.map(({ id, Icon, label }) => {
             const isActive = activeTab === id;
-            const accentColor = id === "hydration" ? C.hydration : id === "diet" ? C.nutrition : id === "exercise" ? C.exercise : id === "weight" ? C.hydration : id === "streak" ? C.nutrition : C.hydration;
+            const accentColor = id === "train" ? C.exercise : id === "progress" ? C.nutrition : C.hydration;
             return (
               <button key={id} onClick={() => setActiveTab(id)}
                 className="flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-xl transition-all active:scale-90 relative min-w-[48px]">
